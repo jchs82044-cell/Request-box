@@ -1,0 +1,302 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>로그인 기능이 있는 온라인 건의함</title>
+    <!-- Tailwind CSS CDN -->
+    <script src="https://cdn.tailwindcss.com"></script>
+</head>
+<body class="bg-gray-50 min-h-screen flex flex-col items-center p-4">
+
+    <div class="w-full max-w-2xl bg-white rounded-xl shadow-md overflow-hidden p-6 mt-6">
+        <header class="mb-6 flex flex-col sm:flex-row justify-between items-center border-b pb-4 gap-3">
+            <div>
+                <h1 class="text-2xl font-bold text-gray-800">💡 온라인 건의함</h1>
+                <p class="text-sm text-gray-500 mt-1">로그인 후 간편하게 건의사항을 남겨보세요.</p>
+            </div>
+            <!-- 로그인 상태 표시 및 버튼 영역 -->
+            <div id="auth-status-container" class="flex items-center gap-2">
+                <!-- 동적으로 로그인 상태에 따라 변경됨 -->
+            </div>
+        </header>
+
+        <!-- [로그인 전] 로그인 화면 -->
+        <div id="login-section" class="bg-blue-50/50 p-6 rounded-lg border border-blue-100 max-w-md mx-auto">
+            <h2 class="text-lg font-semibold text-gray-800 mb-4 text-center">사용자 로그인</h2>
+            <form id="login-form" class="space-y-4">
+                <div>
+                    <label for="login-user-select" class="block text-sm font-medium text-gray-700 mb-1">사용자 번호</label>
+                    <select id="login-user-select" required 
+                        class="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm bg-white focus:outline-none focus:ring-blue-500 focus:border-blue-500">
+                        <option value="">번호 선택 (1~30)</option>
+                    </select>
+                </div>
+                <div>
+                    <label for="login-password" class="block text-sm font-medium text-gray-700 mb-1">비밀번호 (초기: 1111)</label>
+                    <input type="password" id="login-password" required placeholder="비밀번호 입력" 
+                        class="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500">
+                </div>
+                <button type="submit" 
+                    class="w-full bg-blue-600 text-white py-2 px-4 rounded-md hover:bg-blue-700 transition font-medium">
+                    로그인
+                </button>
+            </form>
+        </div>
+
+        <!-- [로그인 후] 건의 작성 화면 (기본은 숨김) -->
+        <div id="suggestion-section" class="hidden space-y-4">
+            <form id="suggestion-form" class="space-y-4 bg-blue-50/50 p-4 rounded-lg border border-blue-100">
+                <div>
+                    <label for="content-input" class="block text-sm font-medium text-gray-700 mb-1">건의 내용</label>
+                    <textarea id="content-input" rows="3" required placeholder="내용을 입력하세요..." 
+                        class="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500"></textarea>
+                </div>
+                <button type="submit" 
+                    class="w-full bg-blue-600 text-white py-2 px-4 rounded-md hover:bg-blue-700 transition font-medium">
+                    건의 등록하기
+                </button>
+            </form>
+        </div>
+
+        <hr class="my-6">
+
+        <!-- 건의사항 목록 -->
+        <section>
+            <h2 class="text-lg font-semibold text-gray-800 mb-3">📋 등록된 건의사항 목록</h2>
+            <div id="suggestion-list" class="space-y-3 max-h-96 overflow-y-auto pr-1">
+                <!-- 건의사항이 동적으로 추가되는 영역 -->
+            </div>
+        </section>
+    </div>
+
+    <!-- 비밀번호 변경 모달 -->
+    <div id="password-modal" class="fixed inset-0 bg-black/50 hidden flex items-center justify-center p-4">
+        <div class="bg-white rounded-xl shadow-lg max-w-md w-full p-6">
+            <h3 class="text-lg font-bold text-gray-800 mb-4">🔒 비밀번호 변경</h3>
+            <form id="change-password-form" class="space-y-4">
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-1">현재 비밀번호</label>
+                    <input type="password" id="modal-current-pw" required 
+                        class="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm">
+                </div>
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-1">새 비밀번호</label>
+                    <input type="password" id="modal-new-pw" required 
+                        class="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm">
+                </div>
+                <div class="flex space-x-2 pt-2">
+                    <button type="button" onclick="suggestionSystem.closePasswordModal()" 
+                        class="w-1/2 bg-gray-200 text-gray-700 py-2 rounded-md hover:bg-gray-300 transition">취소</button>
+                    <button type="submit" 
+                        class="w-1/2 bg-blue-600 text-white py-2 rounded-md hover:bg-blue-700 transition">변경하기</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- JavaScript 클래스 구현 -->
+    <script>
+        class SuggestionItem {
+            constructor(userNumber, content) {
+                this.id = Date.now();
+                this.userNumber = userNumber;
+                this.content = content;
+                this.date = new Date().toLocaleString();
+            }
+        }
+
+        class SuggestionBoxSystem {
+            constructor() {
+                this.passwords = JSON.parse(localStorage.getItem('passwords')) || {};
+                for (let i = 1; i <= 30; i++) {
+                    if (!this.passwords[i]) {
+                        this.passwords[i] = '1111';
+                    }
+                }
+                this.suggestions = JSON.parse(localStorage.getItem('suggestions')) || [];
+                this.currentUser = JSON.parse(localStorage.getItem('currentUser')) || null;
+            }
+
+            saveData() {
+                localStorage.setItem('passwords', JSON.stringify(this.passwords));
+                localStorage.setItem('suggestions', JSON.stringify(this.suggestions));
+                localStorage.setItem('currentUser', JSON.stringify(this.currentUser));
+            }
+
+            login(userNumber, password) {
+                if (this.passwords[userNumber] === password) {
+                    this.currentUser = userNumber;
+                    this.saveData();
+                    this.updateUIState();
+                    return true;
+                }
+                alert('비밀번호가 올바르지 않습니다. (초기 비밀번호: 1111)');
+                return false;
+            }
+
+            logout() {
+                this.currentUser = null;
+                this.saveData();
+                this.updateUIState();
+            }
+
+            changePassword(currentPw, newPw) {
+                if (!this.currentUser) return;
+                if (this.passwords[this.currentUser] !== currentPw) {
+                    alert('현재 비밀번호가 일치하지 않습니다.');
+                    return false;
+                }
+                this.passwords[this.currentUser] = newPw;
+                this.saveData();
+                alert('비밀번호가 성공적으로 변경되었습니다!');
+                return true;
+            }
+
+            addSuggestion(content) {
+                if (!this.currentUser) {
+                    alert('로그인이 필요합니다.');
+                    return false;
+                }
+                const newItem = new SuggestionItem(this.currentUser, content);
+                this.suggestions.unshift(newItem);
+                this.saveData();
+                return true;
+            }
+
+            deleteSuggestion(id, targetUserNumber) {
+                const pw = prompt(`사용자 #${targetUserNumber}의 비밀번호를 입력해주세요:`);
+                if (pw === null) return;
+
+                if (this.passwords[targetUserNumber] !== pw) {
+                    alert('비밀번호가 일치하지 않습니다.');
+                    return;
+                }
+
+                this.suggestions = this.suggestions.filter(item => item.id !== id);
+                this.saveData();
+                this.render();
+            }
+
+            updateUIState() {
+                const loginSection = document.getElementById('login-section');
+                const suggestionSection = document.getElementById('suggestion-section');
+                const authStatusContainer = document.getElementById('auth-status-container');
+
+                if (this.currentUser) {
+                    loginSection.classList.add('hidden');
+                    suggestionSection.classList.remove('hidden');
+                    authStatusContainer.innerHTML = `
+                        <span class="text-sm font-semibold text-blue-600 bg-blue-50 px-3 py-1.5 rounded-md border border-blue-200">
+                            👤 ${this.currentUser}번 사용자 로그인 중
+                        </span>
+                        <button onclick="suggestionSystem.openPasswordModal()" 
+                            class="bg-gray-200 text-gray-700 px-3 py-1.5 rounded-md text-sm hover:bg-gray-300 transition">
+                            🔒 비번변경
+                        </button>
+                        <button onclick="suggestionSystem.logout()" 
+                            class="bg-red-50 text-red-600 border border-red-200 px-3 py-1.5 rounded-md text-sm hover:bg-red-100 transition">
+                            로그아웃
+                        </button>
+                    `;
+                } else {
+                    loginSection.classList.remove('hidden');
+                    suggestionSection.classList.add('hidden');
+                    authStatusContainer.innerHTML = `<span class="text-sm text-gray-400">로그인되지 않았습니다.</span>`;
+                }
+                this.render();
+            }
+
+            render() {
+                const container = document.getElementById('suggestion-list');
+                container.innerHTML = '';
+
+                if (this.suggestions.length === 0) {
+                    container.innerHTML = `<p class="text-sm text-gray-400 text-center py-6">아직 등록된 건의사항이 없습니다.</p>`;
+                    return;
+                }
+
+                this.suggestions.forEach(item => {
+                    const card = document.createElement('div');
+                    card.className = 'p-4 bg-gray-50 border border-gray-200 rounded-lg shadow-sm flex flex-col justify-between';
+                    card.innerHTML = `
+                        <div>
+                            <div class="flex justify-between items-center mb-1">
+                                <span class="font-semibold text-sm text-blue-600">사용자 #${item.userNumber}</span>
+                                <div class="flex items-center space-x-2">
+                                    <span class="text-xs text-gray-400">${item.date}</span>
+                                    <button onclick="suggestionSystem.deleteSuggestion(${item.id}, ${item.userNumber})" 
+                                        class="text-xs text-red-500 hover:text-red-700 bg-red-50 px-2 py-0.5 rounded border border-red-200">삭제</button>
+                                </div>
+                            </div>
+                            <p class="text-sm text-gray-700 whitespace-pre-wrap mt-2">${this.escapeHtml(item.content)}</p>
+                        </div>
+                    `;
+                    container.appendChild(card);
+                });
+            }
+
+            openPasswordModal() {
+                document.getElementById('password-modal').classList.remove('hidden');
+            }
+
+            closePasswordModal() {
+                document.getElementById('password-modal').classList.add('hidden');
+                document.getElementById('change-password-form').reset();
+            }
+
+            escapeHtml(str) {
+                return str.replace(/[&<>'"]/g, 
+                    tag => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', "'": '&#39;', '"': '&quot;' }[tag] || tag)
+                );
+            }
+        }
+
+        const suggestionSystem = new SuggestionBoxSystem();
+
+        function setupOptions() {
+            const select = document.getElementById('login-user-select');
+            select.innerHTML = '<option value="">번호 선택 (1~30)</option>';
+            for (let i = 1; i <= 30; i++) {
+                const option = document.createElement('option');
+                option.value = i;
+                option.textContent = `${i}번 사용자`;
+                select.appendChild(option);
+            }
+        }
+
+        window.addEventListener('DOMContentLoaded', () => {
+            setupOptions();
+            suggestionSystem.updateUIState();
+        });
+
+        document.getElementById('login-form').addEventListener('submit', (e) => {
+            e.preventDefault();
+            const userNum = parseInt(document.getElementById('login-user-select').value);
+            const password = document.getElementById('login-password').value;
+
+            suggestionSystem.login(userNum, password);
+            document.getElementById('login-password').value = '';
+        });
+
+        document.getElementById('suggestion-form').addEventListener('submit', (e) => {
+            e.preventDefault();
+            const content = document.getElementById('content-input').value;
+
+            if (suggestionSystem.addSuggestion(content)) {
+                document.getElementById('content-input').value = '';
+            }
+        });
+
+        document.getElementById('change-password-form').addEventListener('submit', (e) => {
+            e.preventDefault();
+            const currentPw = document.getElementById('modal-current-pw').value;
+            const newPw = document.getElementById('modal-new-pw').value;
+
+            if (suggestionSystem.changePassword(currentPw, newPw)) {
+                suggestionSystem.closePasswordModal();
+            }
+        });
+    </script>
+</body>
+</html>
