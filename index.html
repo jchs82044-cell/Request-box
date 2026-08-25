@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>로그인 기능이 있는 온라인 건의함</title>
+    <title>회원가입 및 로그인 건의함</title>
     <!-- Tailwind CSS CDN -->
     <script src="https://cdn.tailwindcss.com"></script>
 </head>
@@ -13,33 +13,57 @@
         <header class="mb-6 flex flex-col sm:flex-row justify-between items-center border-b pb-4 gap-3">
             <div>
                 <h1 class="text-2xl font-bold text-gray-800">💡 온라인 건의함</h1>
-                <p class="text-sm text-gray-500 mt-1">로그인 후 간편하게 건의사항을 남겨보세요.</p>
+                <p class="text-sm text-gray-500 mt-1">자유롭게 가입하고 로그인하여 의견을 남겨주세요.</p>
             </div>
             <!-- 로그인 상태 표시 및 버튼 영역 -->
             <div id="auth-status-container" class="flex items-center gap-2">
-                <!-- 동적으로 로그인 상태에 따라 변경됨 -->
+                <!-- 동적으로 변경됨 -->
             </div>
         </header>
 
-        <!-- [로그인 전] 로그인 화면 -->
-        <div id="login-section" class="bg-blue-50/50 p-6 rounded-lg border border-blue-100 max-w-md mx-auto">
-            <h2 class="text-lg font-semibold text-gray-800 mb-4 text-center">사용자 로그인</h2>
+        <!-- [로그인 전] 로그인 / 회원가입 탭 화면 -->
+        <div id="auth-section" class="max-w-md mx-auto bg-blue-50/50 p-6 rounded-lg border border-blue-100">
+            <!-- 탭 전환 버튼 -->
+            <div class="flex mb-4 border-b border-blue-200">
+                <button type="button" onclick="suggestionSystem.switchTab('login')" id="tab-login-btn"
+                    class="flex-1 pb-2 font-semibold text-blue-600 border-b-2 border-blue-600 transition">로그인</button>
+                <button type="button" onclick="suggestionSystem.switchTab('signup')" id="tab-signup-btn"
+                    class="flex-1 pb-2 font-medium text-gray-500 hover:text-gray-700 transition">회원가입</button>
+            </div>
+
+            <!-- 로그인 폼 -->
             <form id="login-form" class="space-y-4">
                 <div>
-                    <label for="login-user-select" class="block text-sm font-medium text-gray-700 mb-1">사용자 번호</label>
-                    <select id="login-user-select" required 
-                        class="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm bg-white focus:outline-none focus:ring-blue-500 focus:border-blue-500">
-                        <option value="">번호 선택 (1~30)</option>
-                    </select>
+                    <label class="block text-sm font-medium text-gray-700 mb-1">아이디</label>
+                    <input type="text" id="login-id" required placeholder="아이디를 입력하세요" 
+                        class="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500 bg-white">
                 </div>
                 <div>
-                    <label for="login-password" class="block text-sm font-medium text-gray-700 mb-1">비밀번호 (초기: 1111)</label>
-                    <input type="password" id="login-password" required placeholder="비밀번호 입력" 
-                        class="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500">
+                    <label class="block text-sm font-medium text-gray-700 mb-1">비밀번호</label>
+                    <input type="password" id="login-pw" required placeholder="비밀번호를 입력하세요" 
+                        class="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500 bg-white">
                 </div>
                 <button type="submit" 
                     class="w-full bg-blue-600 text-white py-2 px-4 rounded-md hover:bg-blue-700 transition font-medium">
                     로그인
+                </button>
+            </form>
+
+            <!-- 회원가입 폼 (기본은 숨김) -->
+            <form id="signup-form" class="space-y-4 hidden">
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-1">사용할 아이디</label>
+                    <input type="text" id="signup-id" placeholder="영문/숫자 조합 아이디" 
+                        class="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500 bg-white">
+                </div>
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-1">비밀번호</label>
+                    <input type="password" id="signup-pw" placeholder="비밀번호 입력" 
+                        class="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500 bg-white">
+                </div>
+                <button type="submit" 
+                    class="w-full bg-emerald-600 text-white py-2 px-4 rounded-md hover:bg-emerald-700 transition font-medium">
+                    회원가입 완료
                 </button>
             </form>
         </div>
@@ -50,7 +74,7 @@
                 <div>
                     <label for="content-input" class="block text-sm font-medium text-gray-700 mb-1">건의 내용</label>
                     <textarea id="content-input" rows="3" required placeholder="내용을 입력하세요..." 
-                        class="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500"></textarea>
+                        class="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500 bg-white"></textarea>
                 </div>
                 <button type="submit" 
                     class="w-full bg-blue-600 text-white py-2 px-4 rounded-md hover:bg-blue-700 transition font-medium">
@@ -98,9 +122,9 @@
     <!-- JavaScript 클래스 구현 -->
     <script>
         class SuggestionItem {
-            constructor(userNumber, content) {
+            constructor(author, content) {
                 this.id = Date.now();
-                this.userNumber = userNumber;
+                this.author = author;
                 this.content = content;
                 this.date = new Date().toLocaleString();
             }
@@ -108,31 +132,43 @@
 
         class SuggestionBoxSystem {
             constructor() {
-                this.passwords = JSON.parse(localStorage.getItem('passwords')) || {};
-                for (let i = 1; i <= 30; i++) {
-                    if (!this.passwords[i]) {
-                        this.passwords[i] = '1111';
-                    }
-                }
-                this.suggestions = JSON.parse(localStorage.getItem('suggestions')) || [];
-                this.currentUser = JSON.parse(localStorage.getItem('currentUser')) || null;
+                // users 객체 구조: { "아이디": "비밀번호", ... }
+                this.users = JSON.parse(localStorage.getItem('custom_users')) || {};
+                this.suggestions = JSON.parse(localStorage.getItem('custom_suggestions')) || [];
+                this.currentUser = JSON.parse(localStorage.getItem('custom_currentUser')) || null;
             }
 
             saveData() {
-                localStorage.setItem('passwords', JSON.stringify(this.passwords));
-                localStorage.setItem('suggestions', JSON.stringify(this.suggestions));
-                localStorage.setItem('currentUser', JSON.stringify(this.currentUser));
+                localStorage.setItem('custom_users', JSON.stringify(this.users));
+                localStorage.setItem('custom_suggestions', JSON.stringify(this.suggestions));
+                localStorage.setItem('custom_currentUser', JSON.stringify(this.currentUser));
             }
 
-            login(userNumber, password) {
-                if (this.passwords[userNumber] === password) {
-                    this.currentUser = userNumber;
-                    this.saveData();
-                    this.updateUIState();
-                    return true;
+            signup(id, password) {
+                if (!id.trim() || !password.trim()) {
+                    alert('아이디와 비밀번호를 모두 입력해주세요.');
+                    return false;
                 }
-                alert('비밀번호가 올바르지 않습니다. (초기 비밀번호: 1111)');
-                return false;
+                if (this.users[id]) {
+                    alert('이미 존재하는 아이디입니다.');
+                    return false;
+                }
+                this.users[id] = password;
+                this.saveData();
+                alert('회원가입이 완료되었습니다! 로그인해 주세요.');
+                this.switchTab('login');
+                return true;
+            }
+
+            login(id, password) {
+                if (!this.users[id] || this.users[id] !== password) {
+                    alert('아이디 또는 비밀번호가 올바르지 않습니다.');
+                    return false;
+                }
+                this.currentUser = id;
+                this.saveData();
+                this.updateUIState();
+                return true;
             }
 
             logout() {
@@ -143,13 +179,13 @@
 
             changePassword(currentPw, newPw) {
                 if (!this.currentUser) return;
-                if (this.passwords[this.currentUser] !== currentPw) {
+                if (this.users[this.currentUser] !== currentPw) {
                     alert('현재 비밀번호가 일치하지 않습니다.');
                     return false;
                 }
-                this.passwords[this.currentUser] = newPw;
+                this.users[this.currentUser] = newPw;
                 this.saveData();
-                alert('비밀번호가 성공적으로 변경되었습니다!');
+                alert('비밀번호가 변경되었습니다!');
                 return true;
             }
 
@@ -164,11 +200,12 @@
                 return true;
             }
 
-            deleteSuggestion(id, targetUserNumber) {
-                const pw = prompt(`사용자 #${targetUserNumber}의 비밀번호를 입력해주세요:`);
+            deleteSuggestion(id, author) {
+                // 본인이 작성한 글이거나 관리자일 때 작성자 비밀번호 확인
+                const pw = prompt(`'${author}' 님의 비밀번호를 입력해주세요:`);
                 if (pw === null) return;
 
-                if (this.passwords[targetUserNumber] !== pw) {
+                if (this.users[author] !== pw) {
                     alert('비밀번호가 일치하지 않습니다.');
                     return;
                 }
@@ -178,17 +215,36 @@
                 this.render();
             }
 
+            switchTab(type) {
+                const loginForm = document.getElementById('login-form');
+                const signupForm = document.getElementById('signup-form');
+                const loginBtn = document.getElementById('tab-login-btn');
+                const signupBtn = document.getElementById('tab-signup-btn');
+
+                if (type === 'login') {
+                    loginForm.classList.remove('hidden');
+                    signupForm.classList.add('hidden');
+                    loginBtn.className = 'flex-1 pb-2 font-semibold text-blue-600 border-b-2 border-blue-600 transition';
+                    signupBtn.className = 'flex-1 pb-2 font-medium text-gray-500 hover:text-gray-700 transition';
+                } else {
+                    loginForm.classList.add('hidden');
+                    signupForm.classList.remove('hidden');
+                    signupBtn.className = 'flex-1 pb-2 font-semibold text-emerald-600 border-b-2 border-emerald-600 transition';
+                    loginBtn.className = 'flex-1 pb-2 font-medium text-gray-500 hover:text-gray-700 transition';
+                }
+            }
+
             updateUIState() {
-                const loginSection = document.getElementById('login-section');
+                const authSection = document.getElementById('auth-section');
                 const suggestionSection = document.getElementById('suggestion-section');
                 const authStatusContainer = document.getElementById('auth-status-container');
 
                 if (this.currentUser) {
-                    loginSection.classList.add('hidden');
+                    authSection.classList.add('hidden');
                     suggestionSection.classList.remove('hidden');
                     authStatusContainer.innerHTML = `
                         <span class="text-sm font-semibold text-blue-600 bg-blue-50 px-3 py-1.5 rounded-md border border-blue-200">
-                            👤 ${this.currentUser}번 사용자 로그인 중
+                            👤 ${this.escapeHtml(this.currentUser)} 님
                         </span>
                         <button onclick="suggestionSystem.openPasswordModal()" 
                             class="bg-gray-200 text-gray-700 px-3 py-1.5 rounded-md text-sm hover:bg-gray-300 transition">
@@ -200,7 +256,7 @@
                         </button>
                     `;
                 } else {
-                    loginSection.classList.remove('hidden');
+                    authSection.classList.remove('hidden');
                     suggestionSection.classList.add('hidden');
                     authStatusContainer.innerHTML = `<span class="text-sm text-gray-400">로그인되지 않았습니다.</span>`;
                 }
@@ -222,10 +278,10 @@
                     card.innerHTML = `
                         <div>
                             <div class="flex justify-between items-center mb-1">
-                                <span class="font-semibold text-sm text-blue-600">사용자 #${item.userNumber}</span>
+                                <span class="font-semibold text-sm text-blue-600">👤 ${this.escapeHtml(item.author)}</span>
                                 <div class="flex items-center space-x-2">
                                     <span class="text-xs text-gray-400">${item.date}</span>
-                                    <button onclick="suggestionSystem.deleteSuggestion(${item.id}, ${item.userNumber})" 
+                                    <button onclick="suggestionSystem.deleteSuggestion(${item.id}, '${item.author}')" 
                                         class="text-xs text-red-500 hover:text-red-700 bg-red-50 px-2 py-0.5 rounded border border-red-200">삭제</button>
                                 </div>
                             </div>
@@ -254,31 +310,31 @@
 
         const suggestionSystem = new SuggestionBoxSystem();
 
-        function setupOptions() {
-            const select = document.getElementById('login-user-select');
-            select.innerHTML = '<option value="">번호 선택 (1~30)</option>';
-            for (let i = 1; i <= 30; i++) {
-                const option = document.createElement('option');
-                option.value = i;
-                option.textContent = `${i}번 사용자`;
-                select.appendChild(option);
-            }
-        }
-
         window.addEventListener('DOMContentLoaded', () => {
-            setupOptions();
             suggestionSystem.updateUIState();
         });
 
+        // 로그인 폼 이벤트
         document.getElementById('login-form').addEventListener('submit', (e) => {
             e.preventDefault();
-            const userNum = parseInt(document.getElementById('login-user-select').value);
-            const password = document.getElementById('login-password').value;
+            const id = document.getElementById('login-id').value;
+            const pw = document.getElementById('login-pw').value;
 
-            suggestionSystem.login(userNum, password);
-            document.getElementById('login-password').value = '';
+            suggestionSystem.login(id, pw);
+            document.getElementById('login-form').reset();
         });
 
+        // 회원가입 폼 이벤트
+        document.getElementById('signup-form').addEventListener('submit', (e) => {
+            e.preventDefault();
+            const id = document.getElementById('signup-id').value;
+            const pw = document.getElementById('signup-pw').value;
+
+            suggestionSystem.signup(id, pw);
+            document.getElementById('signup-form').reset();
+        });
+
+        // 건의사항 제출 폼 이벤트
         document.getElementById('suggestion-form').addEventListener('submit', (e) => {
             e.preventDefault();
             const content = document.getElementById('content-input').value;
@@ -288,6 +344,7 @@
             }
         });
 
+        // 비밀번호 변경 폼 이벤트
         document.getElementById('change-password-form').addEventListener('submit', (e) => {
             e.preventDefault();
             const currentPw = document.getElementById('modal-current-pw').value;
