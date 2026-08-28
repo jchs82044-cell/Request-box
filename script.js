@@ -76,7 +76,7 @@ submitBtn.addEventListener('click', () => {
     alert("건의사항이 접수되었습니다.");
 });
 
-// 건의사항 목록 화면에 렌더링하는 함수 (권한별 익명/학번 처리)
+// 건의사항 목록 화면에 렌더링하는 함수 (일반 사용자는 완전 익명 처리)
 function renderSuggestions() {
     suggestionList.innerHTML = '';
     if (suggestions.length === 0) {
@@ -87,14 +87,14 @@ function renderSuggestions() {
     // 현재 로그인한 사용자가 관리자인지 확인
     const isAdmin = adminIds.includes(currentUserId);
 
-    suggestions.forEach((item, index) => {
+    suggestions.forEach((item) => {
         const li = document.createElement('li');
         
         if (isAdmin) {
-            // 관리자에게는 작성자 학번과 내용이 모두 보임
+            // 관리자에게만 작성자 학번이 표시됨
             li.textContent = `[작성자: ${item.writer}] ${item.content}`;
         } else {
-            // 일반 사용자에게는 '익명'으로 표시
+            // 일반 사용자에게는 작성자가 누구인지 절대 알 수 없도록 무조건 [익명]으로 표시
             li.textContent = `[익명] ${item.content}`;
         }
         
