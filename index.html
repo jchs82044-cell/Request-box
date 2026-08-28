@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>학번 직접 입력 건의함</title>
+    <title>온라인 건의함 - 직접 입력 로그인</title>
     <!-- Tailwind CSS CDN -->
     <script src="https://cdn.tailwindcss.com"></script>
 </head>
@@ -12,8 +12,8 @@
     <div class="w-full max-w-2xl bg-white rounded-xl shadow-md overflow-hidden p-6 mt-6">
         <header class="mb-6 flex flex-col sm:flex-row justify-between items-center border-b pb-4 gap-3">
             <div>
-                <h1 class="text-2xl font-bold text-gray-800">💡 온라인 건의함 (학번 직접 입력)</h1>
-                <p class="text-sm text-gray-500 mt-1">학번(20701~20729)과 비밀번호(초기: 1111)를 직접 입력하세요.</p>
+                <h1 class="text-2xl font-bold text-gray-800">💡 온라인 건의함</h1>
+                <p class="text-sm text-gray-500 mt-1">학번과 비밀번호를 직접 입력하여 로그인하세요. (초기 비번: 1111)</p>
             </div>
             <!-- 로그인 상태 표시 및 버튼 영역 -->
             <div id="auth-status-container" class="flex items-center gap-2">
@@ -21,12 +21,12 @@
             </div>
         </header>
 
-        <!-- [로그인 전] 로그인 화면 -->
+        <!-- [로그인 전] 직접 입력 로그인 화면 -->
         <div id="login-section" class="max-w-md mx-auto bg-blue-50/50 p-6 rounded-lg border border-blue-100">
             <h2 class="text-lg font-semibold text-gray-800 mb-4 text-center">로그인</h2>
             <form id="login-form" class="space-y-4">
                 <div>
-                    <label for="login-id" class="block text-sm font-medium text-gray-700 mb-1">학번 입력</label>
+                    <label for="login-id" class="block text-sm font-medium text-gray-700 mb-1">아이디 (학번)</label>
                     <input type="text" id="login-id" required placeholder="예: 20701" maxlength="5"
                         class="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm bg-white focus:outline-none focus:ring-blue-500 focus:border-blue-500">
                 </div>
@@ -93,7 +93,7 @@
         </div>
     </div>
 
-    <!-- JavaScript 클래스 구현 -->
+    <!-- JavaScript 로직 -->
     <script>
         class SuggestionItem {
             constructor(author, content) {
@@ -106,35 +106,38 @@
 
         class SuggestionBoxSystem {
             constructor() {
-                // 20701부터 20729까지 자동 생성 및 초기 비밀번호 1111 설정
-                this.users = JSON.parse(localStorage.getItem('student_input_users')) || {};
+                // 1. 20701 ~ 20729 계정을 시스템(localStorage)에 미리 등록해둠
+                this.users = JSON.parse(localStorage.getItem('direct_input_users')) || {};
                 for (let i = 701; i <= 729; i++) {
                     const studentId = '20' + i;
                     if (!this.users[studentId]) {
-                        this.users[studentId] = '1111';
+                        this.users[studentId] = '1111'; // 초기 비밀번호
                     }
                 }
                 
-                this.suggestions = JSON.parse(localStorage.getItem('student_input_suggestions')) || [];
-                this.currentUser = JSON.parse(localStorage.getItem('student_input_currentUser')) || null;
+                this.suggestions = JSON.parse(localStorage.getItem('direct_input_suggestions')) || [];
+                this.currentUser = JSON.parse(localStorage.getItem('direct_input_currentUser')) || null;
             }
 
             saveData() {
-                localStorage.setItem('student_input_users', JSON.stringify(this.users));
-                localStorage.setItem('student_input_suggestions', JSON.stringify(this.suggestions));
-                localStorage.setItem('student_input_currentUser', JSON.stringify(this.currentUser));
+                localStorage.setItem('direct_input_users', JSON.stringify(this.users));
+                localStorage.setItem('direct_input_suggestions', JSON.stringify(this.suggestions));
+                localStorage.setItem('direct_input_currentUser', JSON.stringify(this.currentUser));
             }
 
             login(id, password) {
                 id = id.trim();
+                password = password.trim();
+
                 if (!this.users[id]) {
-                    alert('등록되지 않은 학번입니다. (20701 ~ 20729 범위 내에서 입력하세요)');
+                    alert('등록되지 않은 학번입니다. (20701 ~ 20729 사이의 학번을 입력하세요)');
                     return false;
                 }
                 if (this.users[id] !== password) {
                     alert('비밀번호가 올바르지 않습니다. (초기 비밀번호: 1111)');
                     return false;
                 }
+
                 this.currentUser = id;
                 this.saveData();
                 this.updateUIState();
@@ -194,7 +197,7 @@
                     suggestionSection.classList.remove('hidden');
                     authStatusContainer.innerHTML = `
                         <span class="text-sm font-semibold text-blue-600 bg-blue-50 px-3 py-1.5 rounded-md border border-blue-200">
-                            🎓 학번 ${this.escapeHtml(this.currentUser)} 로그인 중
+                            🎓 학번 ${this.escapeHtml(this.currentUser)} 님 로그인 중
                         </span>
                         <button onclick="suggestionSystem.openPasswordModal()" 
                             class="bg-gray-200 text-gray-700 px-3 py-1.5 rounded-md text-sm hover:bg-gray-300 transition">
@@ -264,14 +267,14 @@
             suggestionSystem.updateUIState();
         });
 
-        // 로그인 폼 이벤트
+        // 직접 입력 로그인 폼 제출 이벤트
         document.getElementById('login-form').addEventListener('submit', (e) => {
             e.preventDefault();
             const id = document.getElementById('login-id').value;
             const pw = document.getElementById('login-pw').value;
 
             suggestionSystem.login(id, pw);
-            document.getElementById('login-pw').value = '';
+            document.getElementById('login-form').reset();
         });
 
         // 건의사항 제출 폼 이벤트
