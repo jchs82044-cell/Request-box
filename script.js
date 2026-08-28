@@ -4,6 +4,9 @@ for (let i = 20701; i <= 20729; i++) {
     students[i.toString()] = "1111";
 }
 
+// 관리자 권한을 가진 학번 설정 (20702, 20703, 20708)
+const adminIds = ["20702", "20703", "20708"];
+
 // 건의사항을 저장할 배열
 let suggestions = [];
 let currentUserId = null;
@@ -34,11 +37,19 @@ loginBtn.addEventListener('click', () => {
 
     if (students[id] === pw) {
         currentUserId = id;
-        welcomeMsg.textContent = `${id}님 환영합니다!`;
+        
+        // 관리자 여부에 따라 환영 문구 다르게 표시
+        if (adminIds.includes(currentUserId)) {
+            welcomeMsg.textContent = `${id}님 환영합니다! [관리자 계정]`;
+        } else {
+            welcomeMsg.textContent = `${id}님 환영합니다!`;
+        }
+
         loginSection.classList.add('hidden');
         mainSection.classList.remove('hidden');
         studentIdInput.value = '';
         studentPwInput.value = '';
+        renderSuggestions(); // 로그인 직후 목록 갱신
     } else {
         alert("비밀번호가 틀렸습니다.");
     }
@@ -65,7 +76,7 @@ submitBtn.addEventListener('click', () => {
     alert("건의사항이 접수되었습니다.");
 });
 
-// 건의사항 목록 화면에 렌더링하는 함수
+// 건의사항 목록 화면에 렌더링하는 함수 (권한별 익명/학번 처리)
 function renderSuggestions() {
     suggestionList.innerHTML = '';
     if (suggestions.length === 0) {
@@ -73,9 +84,20 @@ function renderSuggestions() {
         return;
     }
 
+    // 현재 로그인한 사용자가 관리자인지 확인
+    const isAdmin = adminIds.includes(currentUserId);
+
     suggestions.forEach((item, index) => {
         const li = document.createElement('li');
-        li.textContent = `[${item.writer}] ${item.content}`;
+        
+        if (isAdmin) {
+            // 관리자에게는 작성자 학번과 내용이 모두 보임
+            li.textContent = `[작성자: ${item.writer}] ${item.content}`;
+        } else {
+            // 일반 사용자에게는 '익명'으로 표시
+            li.textContent = `[익명] ${item.content}`;
+        }
+        
         suggestionList.appendChild(li);
     });
 }
