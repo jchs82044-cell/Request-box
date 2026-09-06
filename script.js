@@ -10,10 +10,7 @@ if (!students) {
 
 const adminIds = ["20702", "20703", "20708"];
 let suggestions = JSON.parse(localStorage.getItem('school_suggestions')) || [];
-
-// 새로고침해도 로그인 상태가 유지되도록 localStorage에서 currentUserId 불러오기
 let currentUserId = localStorage.getItem('current_user_id') || null;
-
 let rankings = JSON.parse(localStorage.getItem('game_rankings')) || [];
 
 // DOM 요소 선택
@@ -36,7 +33,6 @@ const changePwBtn = document.getElementById('change-pw-btn');
 const goToGameBtn = document.getElementById('go-to-game-btn');
 const backToMainBtn = document.getElementById('back-to-main-btn');
 
-// 페이지 로드 시 이미 로그인되어 있던 경우 처리
 window.addEventListener('DOMContentLoaded', () => {
     if (currentUserId && students[currentUserId]) {
         showMainSection();
@@ -54,11 +50,9 @@ function showMainSection() {
     renderSuggestions();
 }
 
-// --- 로그인 로직 ---
 loginBtn.addEventListener('click', () => {
     const id = studentIdInput.value.trim();
     const pw = studentPwInput.value.trim();
-
     students = JSON.parse(localStorage.getItem('school_students'));
 
     if (!students[id]) {
@@ -68,8 +62,7 @@ loginBtn.addEventListener('click', () => {
 
     if (students[id] === pw) {
         currentUserId = id;
-        localStorage.setItem('current_user_id', currentUserId); // 로그인 상태 저장
-        
+        localStorage.setItem('current_user_id', currentUserId);
         studentIdInput.value = '';
         studentPwInput.value = '';
         showMainSection();
@@ -80,12 +73,11 @@ loginBtn.addEventListener('click', () => {
 
 logoutBtn.addEventListener('click', () => {
     currentUserId = null;
-    localStorage.removeItem('current_user_id'); // 로그인 상태 삭제
+    localStorage.removeItem('current_user_id');
     mainSection.classList.add('hidden');
     loginSection.classList.remove('hidden');
 });
 
-// --- 건의함 로직 ---
 submitBtn.addEventListener('click', () => {
     const content = suggestionInput.value.trim();
     if (!content) {
@@ -100,7 +92,6 @@ submitBtn.addEventListener('click', () => {
 
     suggestions.push({ writer: currentUserId, content: content });
     localStorage.setItem('school_suggestions', JSON.stringify(suggestions));
-
     suggestionInput.value = '';
     renderSuggestions();
     alert("건의사항이 접수되었습니다.");
@@ -119,18 +110,15 @@ function renderSuggestions() {
 
     suggestions.forEach((item) => {
         const li = document.createElement('li');
-        // 작성자가 관리자 목록에 포함되어 있는지 엄격하게 확인
         const isWriterAdmin = item.writer && adminIds.includes(item.writer.toString());
 
         if (isWriterAdmin) {
-            // 관리자가 쓴 글은 누구나 [관리자]로 확인 가능 (관리자는 괄호 안에 학번 표시)
             if (isAdmin) {
                 li.textContent = `[관리자 (${item.writer})] ${item.content}`;
             } else {
                 li.textContent = `[관리자] ${item.content}`;
             }
         } else {
-            // 일반 학생이 쓴 글은 관리자에게만 학번이 보이고, 일반 사용자에게는 [익명] 처리
             if (isAdmin) {
                 li.textContent = `[작성자: ${item.writer || '알 수 없음'}] ${item.content}`;
             } else {
@@ -150,12 +138,10 @@ changePwBtn.addEventListener('click', () => {
 
     students[currentUserId] = newPw;
     localStorage.setItem('school_students', JSON.stringify(students));
-
     newPwInput.value = '';
     alert("비밀번호가 성공적으로 변경되었습니다.");
 });
 
-// --- 화면 전환 (건의함 <-> 게임) ---
 goToGameBtn.addEventListener('click', () => {
     mainSection.classList.add('hidden');
     gameSection.classList.remove('hidden');
@@ -169,16 +155,23 @@ backToMainBtn.addEventListener('click', () => {
     isGameRunning = false;
 });
 
-// --- 🦖 공룡 미니게임 & 랭킹 시스템 로직 ---
+// --- 🦖 속도 증가 요소가 포함된 공룡 미니게임 & 랭킹 시스템 ---
 const canvas = document.getElementById('game-canvas');
 const ctx = canvas.getContext('2d');
 const startGameBtn = document.getElementById('start-game-btn');
 const currentScoreText = document.getElementById('current-score');
 const rankingList = document.getElementById('ranking-list');
 
-let dino = { x: 30, y: 110, width: 20, height: 25, vy: 0, gravity: 0.6, jumpPower: -9, grounded: true };
+const dinoImg = new Image();
+dinoImg.src = 'dino.png'; 
+
+const spikeImg = new Image();
+spikeImg.src = 'spike.png';
+
+let dino = { x: 30, y: 105, width: 30, height: 35, vy: 0, gravity: 0.6, jumpPower: -9, grounded: true };
 let obstacles = [];
 let score = 0;
+let gameSpeed = 4; // 기본 속도 설정
 let gameInterval = null;
 let isGameRunning = false;
 
@@ -207,11 +200,12 @@ startGameBtn.addEventListener('click', () => {
 function startGame() {
     if (isGameRunning) return;
     
-    dino.y = 110;
+    dino.y = 105;
     dino.vy = 0;
     dino.grounded = true;
     obstacles = [];
     score = 0;
+    gameSpeed = 4; // 게임 시작 시 초기 속도로 초기화
     isGameRunning = true;
     currentScoreText.textContent = score;
 
@@ -220,30 +214,45 @@ function startGame() {
     gameInterval = setInterval(() => {
         ctx.clearRect(0, 0, canvas.width, canvas.height);
 
+        // 1. 공룡 물리 및 이미지 그리기
         dino.vy += dino.gravity;
         dino.y += dino.vy;
-        if (dino.y > 110) {
-            dino.y = 110;
+        if (dino.y > 105) {
+            dino.y = 105;
             dino.vy = 0;
             dino.grounded = true;
         }
 
-        ctx.fillStyle = "#333";
-        ctx.fillRect(dino.x, dino.y, dino.width, dino.height);
+        if (dinoImg.complete && dinoImg.naturalWidth !== 0) {
+            ctx.drawImage(dinoImg, dino.x, dino.y, dino.width, dino.height);
+        } else {
+            ctx.fillStyle = "#333";
+            ctx.fillRect(dino.x, dino.y, dino.width, dino.height);
+        }
 
+        // 2. 점수가 높아질수록 게임 속도 점진적 증가 (최대 9까지 제한 가능)
+        gameSpeed = 4 + Math.floor(score / 50) * 0.5;
+
+        // 3. 가시 장애물 생성 및 이동
         frameCount++;
-        if (frameCount % 90 === 0) {
-            let obsWidth = 15 + Math.random() * 15;
-            let obsHeight = 20 + Math.random() * 15;
-            obstacles.push({ x: canvas.width, y: 135 - obsHeight, width: obsWidth, height: obsHeight });
+        if (frameCount % Math.max(40, 90 - Math.floor(score / 30) * 5) === 0) {
+            let obsWidth = 25;
+            let obsHeight = 30;
+            obstacles.push({ x: canvas.width, y: 140 - obsHeight, width: obsWidth, height: obsHeight });
         }
 
         for (let i = obstacles.length - 1; i >= 0; i--) {
             let obs = obstacles[i];
-            obs.x -= 4;
-            ctx.fillStyle = "#e74c3c";
-            ctx.fillRect(obs.x, obs.y, obs.width, obs.height);
+            obs.x -= gameSpeed; // 증가된 속도 반영
 
+            if (spikeImg.complete && spikeImg.naturalWidth !== 0) {
+                ctx.drawImage(spikeImg, obs.x, obs.y, obs.width, obs.height);
+            } else {
+                ctx.fillStyle = "#e74c3c";
+                ctx.fillRect(obs.x, obs.y, obs.width, obs.height);
+            }
+
+            // 충돌 감지
             if (
                 dino.x < obs.x + obs.width &&
                 dino.x + dino.width > obs.x &&
