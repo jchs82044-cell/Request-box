@@ -87,7 +87,7 @@ submitBtn.addEventListener('click', () => {
     alert("건의사항이 접수되었습니다.");
 });
 
-// 건의사항 목록 화면에 렌더링하는 함수 (관리자 외에는 작성자 정보 원천 차단)
+// 건의사항 목록 화면에 렌더링하는 함수
 function renderSuggestions() {
     // 최신 건의사항 목록을 localStorage에서 불러옴
     suggestions = JSON.parse(localStorage.getItem('school_suggestions')) || [];
@@ -102,13 +102,22 @@ function renderSuggestions() {
 
     suggestions.forEach((item) => {
         const li = document.createElement('li');
-        
-        if (isAdmin) {
-            // 관리자에게만 작성자의 학번이 표시됨
-            li.textContent = `[작성자: ${item.writer}] ${item.content}`;
+        const isWriterAdmin = adminIds.includes(item.writer); // 글 작성자가 관리자 인지 확인
+
+        if (isWriterAdmin) {
+            // 관리자가 쓴 글은 누구나 볼 수 있게 [관리자]로 표시 (관리자 로그인 시 학번도 함께 확인 가능)
+            if (isAdmin) {
+                li.textContent = `[관리자 (${item.writer})] ${item.content}`;
+            } else {
+                li.textContent = `[관리자] ${item.content}`;
+            }
         } else {
-            // 일반 사용자는 누가 썼는지 절대 알 수 없도록 완전 익명 처리
-            li.textContent = `[익명] ${item.content}`;
+            // 일반 학생이 쓴 글은 관리자에게만 학번이 보이고, 일반 사용자에게는 [익명] 처리
+            if (isAdmin) {
+                li.textContent = `[작성자: ${item.writer}] ${item.content}`;
+            } else {
+                li.textContent = `[익명] ${item.content}`;
+            }
         }
         
         suggestionList.appendChild(li);
