@@ -109,3 +109,12 @@ button:hover {
 #suggestion-list li:last-child {
     border-bottom: none;
 }
+/* 게임 캔버스 및 이미지 스타일 추가 */
+#game-canvas {
+    background-color: #f7f7f7;
+    border: 2px solid #333;
+    display: block;
+    margin: 0 auto;
+    border-radius: 4px;
+    image-rendering: pixelated; /* 픽셀 그래픽 느낌을 살려줍니다 */
+}
