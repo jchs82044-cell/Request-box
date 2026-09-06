@@ -1,14 +1,19 @@
-// 20701 ~ 20729 학생 데이터 생성 
-const students = {};
-for (let i = 20701; i <= 20729; i++) {
-    students[i.toString()] = "1111";
+// 20701 ~ 20729 학생 데이터 관리 (localStorage에 저장된 내용이 있으면 불러오고, 없으면 초기화)
+let students = JSON.parse(localStorage.getItem('school_students'));
+
+if (!students) {
+    students = {};
+    for (let i = 20701; i <= 20729; i++) {
+        students[i.toString()] = "1111";
+    }
+    localStorage.setItem('school_students', JSON.stringify(students));
 }
 
 // 관리자 권한을 가진 학번 설정 (20702, 20703, 20708)
 const adminIds = ["20702", "20703", "20708"];
 
-// 건의사항을 저장할 배열
-let suggestions = [];
+// 건의사항 목록 관리 (localStorage에서 불러오기)
+let suggestions = JSON.parse(localStorage.getItem('school_suggestions')) || [];
 let currentUserId = null;
 
 // DOM 요소 선택
@@ -29,6 +34,9 @@ const changePwBtn = document.getElementById('change-pw-btn');
 loginBtn.addEventListener('click', () => {
     const id = studentIdInput.value.trim();
     const pw = studentPwInput.value.trim();
+
+    // 최신 학생 데이터(비밀번호 변경 반영)를 다시 로컬에서 확인
+    students = JSON.parse(localStorage.getItem('school_students'));
 
     if (!students[id]) {
         alert("등록되지 않은 학번입니다. 20701~20729 사이의 학번을 입력해주세요.");
@@ -70,7 +78,10 @@ submitBtn.addEventListener('click', () => {
         return;
     }
 
+    // 새로운 건의사항 추가 후 localStorage에 저장
     suggestions.push({ writer: currentUserId, content: content });
+    localStorage.setItem('school_suggestions', JSON.stringify(suggestions));
+
     suggestionInput.value = '';
     renderSuggestions();
     alert("건의사항이 접수되었습니다.");
@@ -78,6 +89,9 @@ submitBtn.addEventListener('click', () => {
 
 // 건의사항 목록 화면에 렌더링하는 함수 (관리자 외에는 작성자 정보 원천 차단)
 function renderSuggestions() {
+    // 최신 건의사항 목록을 localStorage에서 불러옴
+    suggestions = JSON.parse(localStorage.getItem('school_suggestions')) || [];
+    
     suggestionList.innerHTML = '';
     if (suggestions.length === 0) {
         suggestionList.innerHTML = '<li>아직 등록된 건의사항이 없습니다.</li>';
@@ -109,7 +123,10 @@ changePwBtn.addEventListener('click', () => {
         return;
     }
 
+    // 비밀번호 변경 후 localStorage에 반영
     students[currentUserId] = newPw;
+    localStorage.setItem('school_students', JSON.stringify(students));
+
     newPwInput.value = '';
     alert("비밀번호가 성공적으로 변경되었습니다.");
 });
