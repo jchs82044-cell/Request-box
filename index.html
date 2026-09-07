@@ -3,72 +3,61 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>학교 건의함 및 미니게임</title>
+    <title>학교 건의함 & 미니게임 (구글 시트 연동)</title>
     <link rel="stylesheet" href="style.css">
 </head>
 <body>
-    <div class="container">
-        <!-- 로그인 섹션 -->
-        <div id="login-section" class="card">
-            <h2>학생 로그인</h2>
-            <p class="desc">학번과 비밀번호를 입력해주세요. (기본 비밀번호: 1111)</p>
-            <input type="text" id="student-id" placeholder="학번 (예: 20701)">
-            <input type="password" id="student-pw" placeholder="비밀번호 (기본: 1111)">
-            <button id="login-btn">로그인</button>
+
+    <!-- [1] 로그인 화면 -->
+    <div id="login-section" class="container">
+        <h2>🏫 학생 로그인</h2>
+        <p class="subtitle">학번 (20701 ~ 20729)과 비밀번호를 입력하세요.</p>
+        <input type="text" id="student-id" placeholder="학번 (예: 20701)" maxlength="5">
+        <input type="password" id="student-pw" placeholder="비밀번호 (초기: 1111)">
+        <button id="login-btn">로그인</button>
+        <p id="login-msg" class="error-msg"></p>
+    </div>
+
+    <!-- [2] 메인 서비스 화면 -->
+    <div id="main-section" class="container hidden">
+        <header>
+            <h1 id="welcome-title">환영합니다!</h1>
+            <button id="logout-btn" class="sub-btn">로그아웃</button>
+        </header>
+
+        <!-- 탭 메뉴 버튼 -->
+        <div class="tab-menu">
+            <button class="tab-btn active" data-target="suggestion-tab">📢 건의함</button>
+            <button class="tab-btn" data-target="game-tab">🎮 미니게임</button>
         </div>
 
-        <!-- 메인 섹션 (로그인 후 표시) -->
-        <div id="main-section" class="card hidden">
-            <div class="header-flex">
-                <h2 id="welcome-msg">환영합니다!</h2>
-                <button id="logout-btn" class="sub-btn">로그아웃</button>
-            </div>
-
-            <!-- 비밀번호 변경 구역 -->
-            <div class="sub-card">
-                <h3>비밀번호 변경</h3>
-                <div class="input-group">
-                    <input type="password" id="new-pw-input" placeholder="새 비밀번호 입력">
-                    <button id="change-pw-btn">변경하기</button>
-                </div>
-            </div>
-
-            <!-- 건의함 구역 -->
-            <div class="sub-card">
-                <h3>학교 건의함 (모든 기기 실시간 공유)</h3>
-                <textarea id="suggestion-input" placeholder="학교에 바라는 점이나 건의사항을 남겨주세요."></textarea>
-                <button id="submit-btn">건의사항 등록</button>
-                <ul id="suggestion-list"></ul>
-            </div>
-
-            <!-- 미니게임 이동 버튼 -->
-            <button id="go-to-game-btn" class="game-move-btn">🦖 공룡 미니게임 하러 가기</button>
-        </div>
-
-        <!-- 미니게임 섹션 -->
-        <div id="game-section" class="card hidden">
-            <div class="header-flex">
-                <h2>공룡 장애물 피하기 게임</h2>
-                <button id="back-to-main-btn" class="sub-btn">메인으로 돌아가기</button>
-            </div>
-            <p class="desc">스페이스바 또는 화면을 클릭하여 점프하세요! (시간이 지날수록 빨라집니다)</p>
+        <!-- 건의함 탭 -->
+        <div id="suggestion-tab" class="tab-content active">
+            <h3>학교에 바라는 점을 남겨주세요</h3>
+            <textarea id="suggestion-input" placeholder="건의 내용을 입력하세요..."></textarea>
+            <button id="submit-suggestion">건의 등록</button>
             
-            <div class="game-container">
-                <canvas id="game-canvas" width="400" height="150"></canvas>
-                <div class="score-board">현재 점수: <span id="current-score">0</span></div>
-                <button id="start-game-btn">게임 시작 / 재시작</button>
+            <div class="list-container">
+                <h4>📋 건의함 목록</h4>
+                <div id="suggestion-list">불러오는 중...</div>
             </div>
+        </div>
 
-            <div class="sub-card ranking-card">
-                <h3>🏆 실시간 랭킹 TOP 5</h3>
-                <ul id="ranking-list"></ul>
+        <!-- 미니게임 탭 -->
+        <div id="game-tab" class="tab-content hidden">
+            <h3>⚡ 5초 동안 광클하기!</h3>
+            <p>버튼을 최대한 많이 눌러 점수를 올리세요.</p>
+            <div class="game-box">
+                <div id="timer">남은 시간: 5초</div>
+                <div id="score">점수: 0</div>
+                <button id="game-action-btn">게임 시작</button>
+            </div>
+            <div class="list-container">
+                <h4>🏆 랭킹</h4>
+                <div id="ranking-list">불러오는 중...</div>
             </div>
         </div>
     </div>
-
-    <!-- Firebase SDK (실시간 데이터 공유) -->
-    <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
-    <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-firestore-compat.js"></script>
 
     <script src="script.js"></script>
 </body>
