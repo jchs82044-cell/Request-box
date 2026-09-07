@@ -1,5 +1,5 @@
 // --- [중요] 구글 Apps Script 웹 앱 배포 후 발급받은 URL을 여기에 넣으세요 ---
-const API_URL = "YOUR_GOOGLE_APPS_SCRIPT_WEB_APP_URL";
+const API_URL = "https://script.google.com/macros/s/AKfycbzU8Ik6mPber3-V_b0lnx0rUjGBzFXlyqqsFyTwWOjCR01w4Tmw_GgGR3i58TLTFVaWLA/exec";
 
 let currentUser = null;
 
