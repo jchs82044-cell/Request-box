@@ -1,4 +1,3 @@
-// --- [중요] 구글 Apps Script 웹 앱 배포 후 발급받은 URL을 여기에 넣으세요 ---
 const API_URL = "https://script.google.com/macros/s/AKfycbzU8Ik6mPber3-V_b0lnx0rUjGBzFXlyqqsFyTwWOjCR01w4Tmw_GgGR3i58TLTFVaWLA/exec";
 
 let currentUser = null;
@@ -12,12 +11,11 @@ const loginMsg = document.getElementById('login-msg');
 const welcomeTitle = document.getElementById('welcome-title');
 const logoutBtn = document.getElementById('logout-btn');
 
-// --- [1] 로그인 기능 ---
-loginBtn.addEventListener('click', () => {
+loginBtn.addEventListener('click', function() {
     const id = studentIdInput.value.trim();
     const pw = studentPwInput.value.trim();
 
-    const idNum = parseInt(id);
+    const idNum = parseInt(id, 10);
     if (isNaN(idNum) || idNum < 20701 || idNum > 20729) {
         loginMsg.textContent = "올바른 학번(20701~20729)을 입력하세요.";
         return;
@@ -32,12 +30,12 @@ loginBtn.addEventListener('click', () => {
     loginMsg.textContent = "";
     loginSection.classList.add('hidden');
     mainSection.classList.remove('hidden');
-    welcomeTitle.textContent = `${currentUser} 학생 환영합니다!`;
+    welcomeTitle.textContent = currentUser + " 학생 환영합니다!";
 
     fetchData();
 });
 
-logoutBtn.addEventListener('click', () => {
+logoutBtn.addEventListener('click', function() {
     currentUser = null;
     studentIdInput.value = '';
     studentPwInput.value = '';
@@ -46,12 +44,11 @@ logoutBtn.addEventListener('click', () => {
     if (dinoGameInterval) clearInterval(dinoGameInterval);
 });
 
-// --- [2] 탭 전환 기능 ---
 const tabBtns = document.querySelectorAll('.tab-btn');
-tabBtns.forEach(btn => {
-    btn.addEventListener('click', () => {
-        document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
-        document.querySelectorAll('.tab-content').forEach(c => c.classList.add('hidden'));
+tabBtns.forEach(function(btn) {
+    btn.addEventListener('click', function() {
+        document.querySelectorAll('.tab-btn').forEach(function(b) { b.classList.remove('active'); });
+        document.querySelectorAll('.tab-content').forEach(function(c) { c.classList.add('hidden'); });
 
         btn.classList.add('active');
         const targetId = btn.getAttribute('data-target');
@@ -63,7 +60,6 @@ tabBtns.forEach(btn => {
     });
 });
 
-// --- [3] 구글 시트 연동 기능 ---
 async function fetchData() {
     if (!API_URL || API_URL.includes("YOUR_")) {
         document.getElementById('suggestion-list').innerHTML = '<p style="color:red; font-size:12px;">Google Apps Script URL을 script.js에 입력해주세요.</p>';
@@ -81,11 +77,10 @@ async function fetchData() {
     }
 }
 
-// 건의함 등록
 const suggestionInput = document.getElementById('suggestion-input');
 const submitSuggestionBtn = document.getElementById('submit-suggestion');
 
-submitSuggestionBtn.addEventListener('click', async () => {
+submitSuggestionBtn.addEventListener('click', async function() {
     const text = suggestionInput.value.trim();
     if (!text) {
         alert('건의 내용을 입력해주세요.');
@@ -122,15 +117,14 @@ function renderSuggestions(list) {
         return;
     }
 
-    list.reverse().forEach(item => {
+    list.reverse().forEach(function(item) {
         const div = document.createElement('div');
         div.className = 'item-card';
-        div.innerHTML = `<strong>${item.author}</strong> (${item.date})<p>${item.content}</p>`;
+        div.innerHTML = '<strong>' + item.author + '</strong> (' + item.date + ')<p>' + item.content + '</p>';
         suggestionList.appendChild(div);
     });
 }
 
-// --- [4] 공룡 게임 로직 ---
 const canvas = document.getElementById('dinoCanvas');
 const ctx = canvas.getContext('2d');
 const dinoScoreDisplay = document.getElementById('dino-score');
@@ -169,7 +163,6 @@ function startDinoGame() {
     dino.grounded = true;
 
     if (dinoGameInterval) clearInterval(dinoGameInterval);
-
     dinoGameInterval = setInterval(updateGame, 1000 / 60);
 }
 
@@ -186,7 +179,7 @@ function jumpDino() {
 
 gameActionBtn.addEventListener('click', jumpDino);
 canvas.addEventListener('click', jumpDino);
-window.addEventListener('keydown', (e) => {
+window.addEventListener('keydown', function(e) {
     if (e.code === 'Space' && !document.getElementById('game-tab').classList.contains('hidden')) {
         e.preventDefault();
         jumpDino();
@@ -234,7 +227,7 @@ function updateGame() {
         ) {
             clearInterval(dinoGameInterval);
             gameRunning = false;
-            dinoScoreDisplay.textContent = `게임 오버! 최종 점수: ${score}`;
+            dinoScoreDisplay.textContent = "게임 오버! 최종 점수: " + score;
             gameActionBtn.textContent = '다시 시작';
             
             saveRanking(currentUser, score);
@@ -249,7 +242,7 @@ function updateGame() {
 
     score += 1;
     gameSpeed = 4 + Math.floor(score / 500);
-    dinoScoreDisplay.textContent = `점수: ${score}`;
+    dinoScoreDisplay.textContent = "점수: " + score;
 }
 
 async function saveRanking(user, finalScore) {
@@ -280,12 +273,12 @@ function renderRankings(list) {
         return;
     }
 
-    list.sort((a, b) => b.score - a.score);
-    list.slice(0, 5).forEach((item, index) => {
+    list.sort(function(a, b) { return b.score - a.score; });
+    list.slice(0, 5).forEach(function(item, index) {
         const div = document.createElement('div');
         div.className = 'item-card';
         div.style.borderLeftColor = index === 0 ? '#f1c40f' : '#4a90e2';
-        div.innerHTML = `<strong>${index + 1위}</strong> 학번: ${item.user} — <strong>${item.score}점</strong>`;
+        div.innerHTML = '<strong>' + (index + 1) + '위</strong> 학번: ' + item.user + ' — <strong>' + item.score + '점</strong>';
         rankingList.appendChild(div);
     });
 }
