@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>학교 건의함 & 미니게임 (구글 시트 연동)</title>
+    <title>학교 건의함 & 공룡 게임 (구글 시트 연동)</title>
     <link rel="stylesheet" href="style.css">
 </head>
 <body>
@@ -28,7 +28,7 @@
         <!-- 탭 메뉴 버튼 -->
         <div class="tab-menu">
             <button class="tab-btn active" data-target="suggestion-tab">📢 건의함</button>
-            <button class="tab-btn" data-target="game-tab">🎮 미니게임</button>
+            <button class="tab-btn" data-target="game-tab">🦖 공룡 게임</button>
         </div>
 
         <!-- 건의함 탭 -->
@@ -43,17 +43,17 @@
             </div>
         </div>
 
-        <!-- 미니게임 탭 -->
+        <!-- 미니게임 (공룡 게임) 탭 -->
         <div id="game-tab" class="tab-content hidden">
-            <h3>⚡ 5초 동안 광클하기!</h3>
-            <p>버튼을 최대한 많이 눌러 점수를 올리세요.</p>
+            <h3>🦖 점프해서 장애물을 피하세요!</h3>
+            <p>스페이스바 또는 버튼을 눌러 점프하세요.</p>
             <div class="game-box">
-                <div id="timer">남은 시간: 5초</div>
-                <div id="score">점수: 0</div>
-                <button id="game-action-btn">게임 시작</button>
+                <div id="dino-score" style="font-weight:bold; margin-bottom:5px; color:#333;">점수: 0</div>
+                <canvas id="dinoCanvas" width="380" height="150" style="background:#f0f0f0; border-radius:6px; display:block; margin:0 auto; cursor:pointer;"></canvas>
+                <button id="game-action-btn" style="margin-top:10px;">게임 시작 / 점프</button>
             </div>
             <div class="list-container">
-                <h4>🏆 랭킹</h4>
+                <h4>🏆 실시간 랭킹</h4>
                 <div id="ranking-list">불러오는 중...</div>
             </div>
         </div>
