@@ -1,17 +1,24 @@
-// 1. 학생 데이터 관리 (localStorage 연동)
-let students = JSON.parse(localStorage.getItem('school_students'));
-if (!students) {
-    students = {};
-    for (let i = 20701; i <= 20729; i++) {
-        students[i.toString()] = "1111";
-    }
-    localStorage.setItem('school_students', JSON.stringify(students));
-}
+// --- [중요] 본인의 Firebase 설정 정보 입력 필요 ---
+const firebaseConfig = {
+    apiKey: "YOUR_API_KEY",
+    authDomain: "YOUR_AUTH_DOMAIN",
+    projectId: "YOUR_PROJECT_ID",
+    storageBucket: "YOUR_STORAGE_BUCKET",
+    messagingSenderId: "YOUR_MESSAGING_SENDER_ID",
+    appId: "YOUR_APP_ID"
+};
 
+// Firebase 초기화
+firebase.initializeApp(firebaseConfig);
+const db = firebase.firestore();
+
+// 1. 학생 데이터 기본 설정
+let students = {};
+for (let i = 20701; i <= 20729; i++) {
+    students[i.toString()] = "1111";
+}
 const adminIds = ["20702", "20703", "20708"];
-let suggestions = JSON.parse(localStorage.getItem('school_suggestions')) || [];
 let currentUserId = localStorage.getItem('current_user_id') || null;
-let rankings = JSON.parse(localStorage.getItem('game_rankings')) || [];
 
 // DOM 요소 선택
 const loginSection = document.getElementById('login-section');
@@ -34,9 +41,11 @@ const goToGameBtn = document.getElementById('go-to-game-btn');
 const backToMainBtn = document.getElementById('back-to-main-btn');
 
 window.addEventListener('DOMContentLoaded', () => {
-    if (currentUserId && students[currentUserId]) {
+    if (currentUserId) {
         showMainSection();
     }
+    // Firebase 실시간 동기화 시작
+    initRealtimeSync();
 });
 
 function showMainSection() {
@@ -47,28 +56,34 @@ function showMainSection() {
     }
     loginSection.classList.add('hidden');
     mainSection.classList.remove('hidden');
-    renderSuggestions();
 }
 
+// 로그인 로직
 loginBtn.addEventListener('click', () => {
     const id = studentIdInput.value.trim();
     const pw = studentPwInput.value.trim();
-    students = JSON.parse(localStorage.getItem('school_students'));
 
     if (!students[id]) {
         alert("등록되지 않은 학번입니다. 20701~20729 사이의 학번을 입력해주세요.");
         return;
     }
 
-    if (students[id] === pw) {
-        currentUserId = id;
-        localStorage.setItem('current_user_id', currentUserId);
-        studentIdInput.value = '';
-        studentPwInput.value = '';
-        showMainSection();
-    } else {
-        alert("비밀번호가 틀렸습니다.");
-    }
+    db.collection("passwords").doc(id).get().then((doc) => {
+        let correctPw = "1111";
+        if (doc.exists) {
+            correctPw = doc.data().pw;
+        }
+
+        if (correctPw === pw) {
+            currentUserId = id;
+            localStorage.setItem('current_user_id', currentUserId);
+            studentIdInput.value = '';
+            studentPwInput.value = '';
+            showMainSection();
+        } else {
+            alert("비밀번호가 틀렸습니다.");
+        }
+    });
 });
 
 logoutBtn.addEventListener('click', () => {
@@ -78,6 +93,7 @@ logoutBtn.addEventListener('click', () => {
     loginSection.classList.remove('hidden');
 });
 
+// 건의함 등록 (Firebase 연동)
 submitBtn.addEventListener('click', () => {
     const content = suggestionInput.value.trim();
     if (!content) {
@@ -90,45 +106,72 @@ submitBtn.addEventListener('click', () => {
         return;
     }
 
-    suggestions.push({ writer: currentUserId, content: content });
-    localStorage.setItem('school_suggestions', JSON.stringify(suggestions));
-    suggestionInput.value = '';
-    renderSuggestions();
-    alert("건의사항이 접수되었습니다.");
+    db.collection("suggestions").add({
+        writer: currentUserId,
+        content: content,
+        createdAt: firebase.firestore.FieldValue.serverTimestamp()
+    }).then(() => {
+        suggestionInput.value = '';
+        alert("건의사항이 접수되었습니다.");
+    }).catch((error) => {
+        console.error("Error adding suggestion: ", error);
+    });
 });
 
-function renderSuggestions() {
-    suggestions = JSON.parse(localStorage.getItem('school_suggestions')) || [];
-    suggestionList.innerHTML = '';
-    
-    if (suggestions.length === 0) {
-        suggestionList.innerHTML = '<li>아직 등록된 건의사항이 없습니다.</li>';
-        return;
-    }
-
-    const isAdmin = adminIds.includes(currentUserId);
-
-    suggestions.forEach((item) => {
-        const li = document.createElement('li');
-        const isWriterAdmin = item.writer && adminIds.includes(item.writer.toString());
-
-        if (isWriterAdmin) {
-            if (isAdmin) {
-                li.textContent = `[관리자 (${item.writer})] ${item.content}`;
-            } else {
-                li.textContent = `[관리자] ${item.content}`;
-            }
-        } else {
-            if (isAdmin) {
-                li.textContent = `[작성자: ${item.writer || '알 수 없음'}] ${item.content}`;
-            } else {
-                li.textContent = `[익명] ${item.content}`;
-            }
+// 실시간 데이터 수신 (Firestore onSnapshot)
+function initRealtimeSync() {
+    // 1. 건의사항 실시간 동기화
+    db.collection("suggestions").orderBy("createdAt", "asc").onSnapshot((snapshot) => {
+        suggestionList.innerHTML = '';
+        if (snapshot.empty) {
+            suggestionList.innerHTML = '<li>아직 등록된 건의사항이 없습니다.</li>';
+            return;
         }
-        suggestionList.appendChild(li);
+
+        const isAdmin = adminIds.includes(currentUserId);
+
+        snapshot.forEach((doc) => {
+            const item = doc.data();
+            const li = document.createElement('li');
+            const isWriterAdmin = item.writer && adminIds.includes(item.writer.toString());
+
+            if (isWriterAdmin) {
+                if (isAdmin) {
+                    li.textContent = `[관리자 (${item.writer})] ${item.content}`;
+                } else {
+                    li.textContent = `[관리자] ${item.content}`;
+                }
+            } else {
+                if (isAdmin) {
+                    li.textContent = `[작성자: ${item.writer || '알 수 없음'}] ${item.content}`;
+                } else {
+                    li.textContent = `[익명] ${item.content}`;
+                }
+            }
+            suggestionList.appendChild(li);
+        });
+    });
+
+    // 2. 랭킹 실시간 동기화
+    db.collection("rankings").orderBy("score", "desc").limit(5).onSnapshot((snapshot) => {
+        rankingList.innerHTML = '';
+        if (snapshot.empty) {
+            rankingList.innerHTML = '<li>아직 등록된 랭킹 기록이 없습니다. 첫 기록을 세워보세요!</li>';
+            return;
+        }
+
+        let index = 1;
+        snapshot.forEach((doc) => {
+            const rank = doc.data();
+            const li = document.createElement('li');
+            li.textContent = `${index}등. 학번 ${rank.id} - ${rank.score}점`;
+            rankingList.appendChild(li);
+            index++;
+        });
     });
 }
 
+// 비밀번호 변경
 changePwBtn.addEventListener('click', () => {
     const newPw = newPwInput.value.trim();
     if (!newPw) {
@@ -136,16 +179,18 @@ changePwBtn.addEventListener('click', () => {
         return;
     }
 
-    students[currentUserId] = newPw;
-    localStorage.setItem('school_students', JSON.stringify(students));
-    newPwInput.value = '';
-    alert("비밀번호가 성공적으로 변경되었습니다.");
+    db.collection("passwords").doc(currentUserId).set({
+        pw: newPw
+    }).then(() => {
+        newPwInput.value = '';
+        alert("비밀번호가 성공적으로 변경되었습니다.");
+    });
 });
 
+// 화면 전환
 goToGameBtn.addEventListener('click', () => {
     mainSection.classList.add('hidden');
     gameSection.classList.remove('hidden');
-    renderRanking();
 });
 
 backToMainBtn.addEventListener('click', () => {
@@ -171,7 +216,7 @@ spikeImg.src = 'spike.png';
 let dino = { x: 30, y: 105, width: 30, height: 35, vy: 0, gravity: 0.6, jumpPower: -9, grounded: true };
 let obstacles = [];
 let score = 0;
-let gameSpeed = 4; // 기본 속도 설정
+let gameSpeed = 4; // 기본 속도
 let gameInterval = null;
 let isGameRunning = false;
 
@@ -205,7 +250,7 @@ function startGame() {
     dino.grounded = true;
     obstacles = [];
     score = 0;
-    gameSpeed = 4; // 게임 시작 시 초기 속도로 초기화
+    gameSpeed = 4; // 초기 속도
     isGameRunning = true;
     currentScoreText.textContent = score;
 
@@ -214,7 +259,7 @@ function startGame() {
     gameInterval = setInterval(() => {
         ctx.clearRect(0, 0, canvas.width, canvas.height);
 
-        // 1. 공룡 물리 및 이미지 그리기
+        // 공룡 물리 연산
         dino.vy += dino.gravity;
         dino.y += dino.vy;
         if (dino.y > 105) {
@@ -230,10 +275,10 @@ function startGame() {
             ctx.fillRect(dino.x, dino.y, dino.width, dino.height);
         }
 
-        // 2. 점수가 높아질수록 게임 속도 점진적 증가 (최대 9까지 제한 가능)
+        // 점수가 높아질수록 게임 속도 점진적 증가
         gameSpeed = 4 + Math.floor(score / 50) * 0.5;
 
-        // 3. 가시 장애물 생성 및 이동
+        // 장애물 생성 및 이동
         frameCount++;
         if (frameCount % Math.max(40, 90 - Math.floor(score / 30) * 5) === 0) {
             let obsWidth = 25;
@@ -243,7 +288,7 @@ function startGame() {
 
         for (let i = obstacles.length - 1; i >= 0; i--) {
             let obs = obstacles[i];
-            obs.x -= gameSpeed; // 증가된 속도 반영
+            obs.x -= gameSpeed;
 
             if (spikeImg.complete && spikeImg.naturalWidth !== 0) {
                 ctx.drawImage(spikeImg, obs.x, obs.y, obs.width, obs.height);
@@ -277,39 +322,19 @@ function gameOver() {
     alert(`게임 종료! 최종 점수: ${score}점`);
 
     saveRanking(currentUserId, score);
-    renderRanking();
 }
 
+// Firebase 랭킹 저장
 function saveRanking(userId, finalScore) {
     if (finalScore === 0 || !userId) return;
 
-    let existingIndex = rankings.findIndex(r => r.id === userId);
-    if (existingIndex !== -1) {
-        if (finalScore > rankings[existingIndex].score) {
-            rankings[existingIndex].score = finalScore;
+    const rankRef = db.collection("rankings").doc(userId);
+    rankRef.get().then((doc) => {
+        if (!doc.exists || finalScore > doc.data().score) {
+            rankRef.set({
+                id: userId,
+                score: finalScore
+            });
         }
-    } else {
-        rankings.push({ id: userId, score: finalScore });
-    }
-
-    rankings.sort((a, b) => b.score - a.score);
-    rankings = rankings.slice(0, 5);
-
-    localStorage.setItem('game_rankings', JSON.stringify(rankings));
-}
-
-function renderRanking() {
-    rankings = JSON.parse(localStorage.getItem('game_rankings')) || [];
-    rankingList.innerHTML = '';
-
-    if (rankings.length === 0) {
-        rankingList.innerHTML = '<li>아직 등록된 랭킹 기록이 없습니다. 첫 기록을 세워보세요!</li>';
-        return;
-    }
-
-    rankings.forEach((rank, index) => {
-        const li = document.createElement('li');
-        li.textContent = `${index + 1}등. 학번 ${rank.id} - ${rank.score}점`;
-        rankingList.appendChild(li);
     });
 }
