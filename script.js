@@ -1,6 +1,8 @@
+// --- [중요] 구글 Apps Script 웹 앱 배포 후 발급받은 URL을 여기에 넣으세요 ---
 const API_URL = "https://script.google.com/macros/s/AKfycbzU8Ik6mPber3-V_b0lnx0rUjGBzFXlyqqsFyTwWOjCR01w4Tmw_GgGR3i58TLTFVaWLA/exec";
 
 let currentUser = null;
+const adminUsers = ["20702", "20703", "20708"]; // 관리자 학번 지정
 
 const loginSection = document.getElementById('login-section');
 const mainSection = document.getElementById('main-section');
@@ -11,6 +13,7 @@ const loginMsg = document.getElementById('login-msg');
 const welcomeTitle = document.getElementById('welcome-title');
 const logoutBtn = document.getElementById('logout-btn');
 
+// --- [1] 로그인 기능 ---
 loginBtn.addEventListener('click', function() {
     const id = studentIdInput.value.trim();
     const pw = studentPwInput.value.trim();
@@ -30,7 +33,13 @@ loginBtn.addEventListener('click', function() {
     loginMsg.textContent = "";
     loginSection.classList.add('hidden');
     mainSection.classList.remove('hidden');
-    welcomeTitle.textContent = currentUser + " 학생 환영합니다!";
+    
+    // 관리자 여부에 따른 환영 메시지 분기
+    if (adminUsers.includes(currentUser)) {
+        welcomeTitle.textContent = currentUser + " 학생 (관리자) 환영합니다!";
+    } else {
+        welcomeTitle.textContent = currentUser + " 학생 환영합니다!";
+    }
 
     fetchData();
 });
@@ -44,6 +53,7 @@ logoutBtn.addEventListener('click', function() {
     if (dinoGameInterval) clearInterval(dinoGameInterval);
 });
 
+// --- [2] 탭 전환 기능 ---
 const tabBtns = document.querySelectorAll('.tab-btn');
 tabBtns.forEach(function(btn) {
     btn.addEventListener('click', function() {
@@ -60,6 +70,7 @@ tabBtns.forEach(function(btn) {
     });
 });
 
+// --- [3] 구글 시트 데이터 통신 기능 ---
 async function fetchData() {
     if (!API_URL || API_URL.includes("YOUR_")) {
         document.getElementById('suggestion-list').innerHTML = '<p style="color:red; font-size:12px;">Google Apps Script URL을 script.js에 입력해주세요.</p>';
@@ -77,6 +88,7 @@ async function fetchData() {
     }
 }
 
+// 건의함 등록
 const suggestionInput = document.getElementById('suggestion-input');
 const submitSuggestionBtn = document.getElementById('submit-suggestion');
 
@@ -109,6 +121,7 @@ submitSuggestionBtn.addEventListener('click', async function() {
     }
 });
 
+// 건의함 렌더링 (작성자 표시 규칙 반영)
 function renderSuggestions(list) {
     const suggestionList = document.getElementById('suggestion-list');
     suggestionList.innerHTML = '';
@@ -117,14 +130,71 @@ function renderSuggestions(list) {
         return;
     }
 
-    list.reverse().forEach(function(item) {
+    const isAdmin = adminUsers.includes(currentUser);
+
+    list.reverse().forEach(function(item, index) {
         const div = document.createElement('div');
         div.className = 'item-card';
-        div.innerHTML = '<strong>' + item.author + '</strong> (' + item.date + ')<p>' + item.content + '</p>';
+        
+        let displayName = "";
+
+        if (isAdmin) {
+            // 관리자는 모든 글의 실제 작성자 학번을 파악 가능
+            if (adminUsers.includes(item.author)) {
+                displayName = "관리자 (" + item.author + ")";
+            } else {
+                displayName = item.author;
+            }
+        } else {
+            // 일반 사용자의 경우
+            if (item.author === currentUser) {
+                displayName = item.author; // 내가 쓴 글은 내 아이디
+            } else if (adminUsers.includes(item.author)) {
+                displayName = "관리자"; // 관리자 글은 '관리자'
+            } else {
+                displayName = "익명"; // 타인 글은 '익명'
+            }
+        }
+
+        let html = '<strong>작성자: ' + displayName + '</strong> (' + item.date + ')<p>' + item.content + '</p>';
+        
+        // 관리자이거나 본인이 작성한 글인 경우 삭제 버튼 노출
+        if (isAdmin || item.author === currentUser) {
+            html += '<button class="delete-btn" data-index="' + (list.length - 1 - index) + '" style="margin-top:5px; padding:4px 8px; font-size:11px; background:#e74c3c; width:auto;">삭제</button>';
+        }
+
+        div.innerHTML = html;
         suggestionList.appendChild(div);
+    });
+
+    // 삭제 버튼 이벤트 바인딩
+    document.querySelectorAll('.delete-btn').forEach(function(btn) {
+        btn.addEventListener('click', async function() {
+            if (!confirm('정말 이 건의사항을 삭제하시겠습니까?')) return;
+            const targetIndex = this.getAttribute('data-index');
+            await deleteSuggestion(targetIndex);
+        });
     });
 }
 
+async function deleteSuggestion(index) {
+    const payload = {
+        action: "deleteSuggestion",
+        index: index
+    };
+
+    try {
+        await fetch(API_URL, {
+            method: 'POST',
+            body: JSON.stringify(payload)
+        });
+        await fetchData();
+    } catch (error) {
+        alert("삭제 중 오류가 발생했습니다.");
+    }
+}
+
+// --- [4] 공룡 게임 및 실시간 랭킹 로직 ---
 const canvas = document.getElementById('dinoCanvas');
 const ctx = canvas.getContext('2d');
 const dinoScoreDisplay = document.getElementById('dino-score');
