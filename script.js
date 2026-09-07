@@ -57,7 +57,6 @@ tabBtns.forEach(btn => {
         const targetId = btn.getAttribute('data-target');
         document.getElementById(targetId).classList.remove('hidden');
 
-        // 게임 탭으로 진입할 때 캔버스 크기 조정 등 초기화 필요시 대응
         if (targetId === 'game-tab' && !gameRunning && !gameInitialized) {
             initDinoGame();
         }
@@ -132,14 +131,6 @@ function renderSuggestions(list) {
 }
 
 // --- [4] 공룡 게임 로직 ---
-// 기존 미니게임 HTML 박스를 공룡 게임용 Canvas 구조로 동적 변환하거나 제어합니다.
-const gameBox = document.querySelector('.game-box');
-gameBox.innerHTML = `
-    <div id="dino-score" style="font-weight:bold; margin-bottom:5px; color:#333;">점수: 0</div>
-    <canvas id="dinoCanvas" width="380" height="150" style="background:#f0f0f0; border-radius:6px; display:block; margin:0 auto; cursor:pointer;"></canvas>
-    <button id="game-action-btn" style="margin-top:10px;">게임 시작 / 점프 (스페이스바 또는 터치)</button>
-`;
-
 const canvas = document.getElementById('dinoCanvas');
 const ctx = canvas.getContext('2d');
 const dinoScoreDisplay = document.getElementById('dino-score');
@@ -179,7 +170,7 @@ function startDinoGame() {
 
     if (dinoGameInterval) clearInterval(dinoGameInterval);
 
-    dinoGameInterval = setInterval(updateGame, 1000 / 60); // 60프레임
+    dinoGameInterval = setInterval(updateGame, 1000 / 60);
 }
 
 function jumpDino() {
@@ -203,11 +194,9 @@ window.addEventListener('keydown', (e) => {
 });
 
 function updateGame() {
-    // 배경 지우기
     ctx.fillStyle = '#f9f9f9';
     ctx.fillRect(0, 0, canvas.width, canvas.height);
 
-    // 바닥 선 그리기
     ctx.strokeStyle = '#555';
     ctx.lineWidth = 2;
     ctx.beginPath();
@@ -215,7 +204,6 @@ function updateGame() {
     ctx.lineTo(canvas.width, 130);
     ctx.stroke();
 
-    // 공룡 물리 연산
     dino.vy += dino.gravity;
     dino.y += dino.vy;
 
@@ -225,51 +213,42 @@ function updateGame() {
         dino.grounded = true;
     }
 
-    // 공룡 그리기 (네모난 공룡 모양)
     ctx.fillStyle = '#4a90e2';
     ctx.fillRect(dino.x, dino.y, dino.width, dino.height);
 
-    // 장애물 생성 (랜덤 간격)
     if (Math.random() < 0.02 && (obstacles.length === 0 || canvas.width - obstacles[obstacles.length - 1].x > 150)) {
         obstacles.push({ x: canvas.width, y: 105, width: 15, height: 25 });
     }
 
-    // 장애물 이동 및 충돌 체크
     for (let i = obstacles.length - 1; i >= 0; i--) {
         obstacles[i].x -= gameSpeed;
         
-        // 장애물 그리기 (선인장)
         ctx.fillStyle = '#e74c3c';
         ctx.fillRect(obstacles[i].x, obstacles[i].y, obstacles[i].width, obstacles[i].height);
 
-        // 충돌 감지 (AABB 박스 충돌)
         if (
             dino.x < obstacles[i].x + obstacles[i].width &&
             dino.x + dino.width > obstacles[i].x &&
             dino.y < obstacles[i].y + obstacles[i].height &&
             dino.y + dino.height > obstacles[i].y
         ) {
-            // 게임 오버
             clearInterval(dinoGameInterval);
             gameRunning = false;
             dinoScoreDisplay.textContent = `게임 오버! 최종 점수: ${score}`;
             gameActionBtn.textContent = '다시 시작';
             
-            // 서버에 점수 전송
             saveRanking(currentUser, score);
             return;
         }
 
-        // 화면 밖으로 나간 장애물 제거
         if (obstacles[i].x + obstacles[i].width < 0) {
             obstacles.splice(i, 1);
-            score += 10; // 장애물 피할 때마다 점수 획득
+            score += 10;
         }
     }
 
-    // 점수 증가 (시간에 따른 가점)
     score += 1;
-    gameSpeed = 4 + Math.floor(score / 500); // 점수가 높을수록 빨라짐
+    gameSpeed = 4 + Math.floor(score / 500);
     dinoScoreDisplay.textContent = `점수: ${score}`;
 }
 
@@ -287,7 +266,7 @@ async function saveRanking(user, finalScore) {
             method: 'POST',
             body: JSON.stringify(payload)
         });
-        await fetchData(); // 랭킹 갱신 반영
+        await fetchData();
     } catch (error) {
         console.error("랭킹 저장 오류:", error);
     }
