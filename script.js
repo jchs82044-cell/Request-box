@@ -1,341 +1,312 @@
-// 본인의 파이어베이스 설정 정보가 이미 적용된 완성된 코드입니다.
-const firebaseConfig = {
-    apiKey: "AIzaSyDQTEOv0w5BGpdc6sfAKQA29lSmIqoSUCI",
-    authDomain: "request-box-bd52a.firebaseapp.com",
-    projectId: "request-box-bd52a",
-    storageBucket: "request-box-bd52a.appspot.com",
-    messagingSenderId: "346195233198",
-    appId: "1:346195233198:web:3e9b24d04600d7cbc4e03f",
-    measurementId: "G-6NC206K04Q"
-};
+// --- [중요] 구글 Apps Script 웹 앱 배포 후 발급받은 URL을 여기에 넣으세요 ---
+const API_URL = "YOUR_GOOGLE_APPS_SCRIPT_WEB_APP_URL";
 
-// Firebase 초기화 (compat 버전)
-firebase.initializeApp(firebaseConfig);
-const db = firebase.firestore();
+let currentUser = null;
 
-// 1. 학생 데이터 기본 설정
-let students = {};
-for (let i = 20701; i <= 20729; i++) {
-    students[i.toString()] = "1111";
-}
-const adminIds = ["20702", "20703", "20708"];
-let currentUserId = localStorage.getItem('current_user_id') || null;
-
-// DOM 요소 선택
 const loginSection = document.getElementById('login-section');
 const mainSection = document.getElementById('main-section');
-const gameSection = document.getElementById('game-section');
-
 const studentIdInput = document.getElementById('student-id');
 const studentPwInput = document.getElementById('student-pw');
 const loginBtn = document.getElementById('login-btn');
+const loginMsg = document.getElementById('login-msg');
+const welcomeTitle = document.getElementById('welcome-title');
 const logoutBtn = document.getElementById('logout-btn');
-const welcomeMsg = document.getElementById('welcome-msg');
 
-const suggestionInput = document.getElementById('suggestion-input');
-const submitBtn = document.getElementById('submit-btn');
-const suggestionList = document.getElementById('suggestion-list');
-const newPwInput = document.getElementById('new-pw-input');
-const changePwBtn = document.getElementById('change-pw-btn');
-
-const goToGameBtn = document.getElementById('go-to-game-btn');
-const backToMainBtn = document.getElementById('back-to-main-btn');
-
-window.addEventListener('DOMContentLoaded', () => {
-    if (currentUserId) {
-        showMainSection();
-    }
-    // Firebase 실시간 동기화 시작
-    initRealtimeSync();
-});
-
-function showMainSection() {
-    if (adminIds.includes(currentUserId)) {
-        welcomeMsg.textContent = `${currentUserId}님 환영합니다! [관리자 계정]`;
-    } else {
-        welcomeMsg.textContent = `${currentUserId}님 환영합니다!`;
-    }
-    loginSection.classList.add('hidden');
-    mainSection.classList.remove('hidden');
-}
-
-// 로그인 로직
+// --- [1] 로그인 기능 ---
 loginBtn.addEventListener('click', () => {
     const id = studentIdInput.value.trim();
     const pw = studentPwInput.value.trim();
 
-    if (!students[id]) {
-        alert("등록되지 않은 학번입니다. 20701~20729 사이의 학번을 입력해주세요.");
+    const idNum = parseInt(id);
+    if (isNaN(idNum) || idNum < 20701 || idNum > 20729) {
+        loginMsg.textContent = "올바른 학번(20701~20729)을 입력하세요.";
         return;
     }
 
-    db.collection("passwords").doc(id).get().then((doc) => {
-        let correctPw = "1111";
-        if (doc.exists) {
-            correctPw = doc.data().pw;
-        }
+    if (pw !== '1111') {
+        loginMsg.textContent = "비밀번호가 틀렸습니다. (기본: 1111)";
+        return;
+    }
 
-        if (correctPw === pw) {
-            currentUserId = id;
-            localStorage.setItem('current_user_id', currentUserId);
-            studentIdInput.value = '';
-            studentPwInput.value = '';
-            showMainSection();
-        } else {
-            alert("비밀번호가 틀렸습니다.");
-        }
-    });
+    currentUser = id;
+    loginMsg.textContent = "";
+    loginSection.classList.add('hidden');
+    mainSection.classList.remove('hidden');
+    welcomeTitle.textContent = `${currentUser} 학생 환영합니다!`;
+
+    fetchData();
 });
 
 logoutBtn.addEventListener('click', () => {
-    currentUserId = null;
-    localStorage.removeItem('current_user_id');
+    currentUser = null;
+    studentIdInput.value = '';
+    studentPwInput.value = '';
     mainSection.classList.add('hidden');
     loginSection.classList.remove('hidden');
+    if (dinoGameInterval) clearInterval(dinoGameInterval);
 });
 
-// 건의함 등록 (Firebase 연동)
-submitBtn.addEventListener('click', () => {
-    const content = suggestionInput.value.trim();
-    if (!content) {
-        alert("내용을 입력해주세요.");
+// --- [2] 탭 전환 기능 ---
+const tabBtns = document.querySelectorAll('.tab-btn');
+tabBtns.forEach(btn => {
+    btn.addEventListener('click', () => {
+        document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+        document.querySelectorAll('.tab-content').forEach(c => c.classList.add('hidden'));
+
+        btn.classList.add('active');
+        const targetId = btn.getAttribute('data-target');
+        document.getElementById(targetId).classList.remove('hidden');
+
+        // 게임 탭으로 진입할 때 캔버스 크기 조정 등 초기화 필요시 대응
+        if (targetId === 'game-tab' && !gameRunning && !gameInitialized) {
+            initDinoGame();
+        }
+    });
+});
+
+// --- [3] 구글 시트 연동 기능 ---
+async function fetchData() {
+    if (!API_URL || API_URL.includes("YOUR_")) {
+        document.getElementById('suggestion-list').innerHTML = '<p style="color:red; font-size:12px;">Google Apps Script URL을 script.js에 입력해주세요.</p>';
+        document.getElementById('ranking-list').innerHTML = '<p style="color:red; font-size:12px;">Google Apps Script URL을 script.js에 입력해주세요.</p>';
         return;
     }
 
-    if (!currentUserId) {
-        alert("로그인 정보가 없습니다. 다시 로그인해주세요.");
+    try {
+        const response = await fetch(API_URL);
+        const data = await response.json();
+        renderSuggestions(data.suggestions || []);
+        renderRankings(data.rankings || []);
+    } catch (error) {
+        console.error("데이터 불러오기 실패:", error);
+    }
+}
+
+// 건의함 등록
+const suggestionInput = document.getElementById('suggestion-input');
+const submitSuggestionBtn = document.getElementById('submit-suggestion');
+
+submitSuggestionBtn.addEventListener('click', async () => {
+    const text = suggestionInput.value.trim();
+    if (!text) {
+        alert('건의 내용을 입력해주세요.');
         return;
     }
 
-    db.collection("suggestions").add({
-        writer: currentUserId,
-        content: content,
-        createdAt: firebase.firestore.FieldValue.serverTimestamp()
-    }).then(() => {
+    const payload = {
+        action: "addSuggestion",
+        author: currentUser,
+        content: text,
+        date: new Date().toLocaleDateString()
+    };
+
+    submitSuggestionBtn.disabled = true;
+    try {
+        await fetch(API_URL, {
+            method: 'POST',
+            body: JSON.stringify(payload)
+        });
         suggestionInput.value = '';
-        alert("건의사항이 접수되었습니다.");
-    }).catch((error) => {
-        console.error("Error adding suggestion: ", error);
-    });
+        await fetchData();
+    } catch (error) {
+        alert("등록 중 오류가 발생했습니다.");
+    } finally {
+        submitSuggestionBtn.disabled = false;
+    }
 });
 
-// 실시간 데이터 수신 (Firestore onSnapshot)
-function initRealtimeSync() {
-    // 1. 건의사항 실시간 동기화
-    db.collection("suggestions").orderBy("createdAt", "asc").onSnapshot((snapshot) => {
-        suggestionList.innerHTML = '';
-        if (snapshot.empty) {
-            suggestionList.innerHTML = '<li>아직 등록된 건의사항이 없습니다.</li>';
-            return;
-        }
+function renderSuggestions(list) {
+    const suggestionList = document.getElementById('suggestion-list');
+    suggestionList.innerHTML = '';
+    if (list.length === 0) {
+        suggestionList.innerHTML = '<p style="font-size:12px; color:#888;">등록된 건의사항이 없습니다.</p>';
+        return;
+    }
 
-        const isAdmin = adminIds.includes(currentUserId);
-
-        snapshot.forEach((doc) => {
-            const item = doc.data();
-            const li = document.createElement('li');
-            const isWriterAdmin = item.writer && adminIds.includes(item.writer.toString());
-
-            if (isWriterAdmin) {
-                if (isAdmin) {
-                    li.textContent = `[관리자 (${item.writer})] ${item.content}`;
-                } else {
-                    li.textContent = `[관리자] ${item.content}`;
-                }
-            } else {
-                if (isAdmin) {
-                    li.textContent = `[작성자: ${item.writer || '알 수 없음'}] ${item.content}`;
-                } else {
-                    li.textContent = `[익명] ${item.content}`;
-                }
-            }
-            suggestionList.appendChild(li);
-        });
-    });
-
-    // 2. 랭킹 실시간 동기화
-    db.collection("rankings").orderBy("score", "desc").limit(5).onSnapshot((snapshot) => {
-        rankingList.innerHTML = '';
-        if (snapshot.empty) {
-            rankingList.innerHTML = '<li>아직 등록된 랭킹 기록이 없습니다. 첫 기록을 세워보세요!</li>';
-            return;
-        }
-
-        let index = 1;
-        snapshot.forEach((doc) => {
-            const rank = doc.data();
-            const li = document.createElement('li');
-            li.textContent = `${index}등. 학번 ${rank.id} - ${rank.score}점`;
-            rankingList.appendChild(li);
-            index++;
-        });
+    list.reverse().forEach(item => {
+        const div = document.createElement('div');
+        div.className = 'item-card';
+        div.innerHTML = `<strong>${item.author}</strong> (${item.date})<p>${item.content}</p>`;
+        suggestionList.appendChild(div);
     });
 }
 
-// 비밀번호 변경
-changePwBtn.addEventListener('click', () => {
-    const newPw = newPwInput.value.trim();
-    if (!newPw) {
-        alert("변경할 비밀번호를 입력해주세요.");
-        return;
-    }
+// --- [4] 공룡 게임 로직 ---
+// 기존 미니게임 HTML 박스를 공룡 게임용 Canvas 구조로 동적 변환하거나 제어합니다.
+const gameBox = document.querySelector('.game-box');
+gameBox.innerHTML = `
+    <div id="dino-score" style="font-weight:bold; margin-bottom:5px; color:#333;">점수: 0</div>
+    <canvas id="dinoCanvas" width="380" height="150" style="background:#f0f0f0; border-radius:6px; display:block; margin:0 auto; cursor:pointer;"></canvas>
+    <button id="game-action-btn" style="margin-top:10px;">게임 시작 / 점프 (스페이스바 또는 터치)</button>
+`;
 
-    db.collection("passwords").doc(currentUserId).set({
-        pw: newPw
-    }).then(() => {
-        newPwInput.value = '';
-        alert("비밀번호가 성공적으로 변경되었습니다.");
-    });
-});
-
-// 화면 전환
-goToGameBtn.addEventListener('click', () => {
-    mainSection.classList.add('hidden');
-    gameSection.classList.remove('hidden');
-});
-
-backToMainBtn.addEventListener('click', () => {
-    gameSection.classList.add('hidden');
-    mainSection.classList.remove('hidden');
-    if (gameInterval) clearInterval(gameInterval);
-    isGameRunning = false;
-});
-
-// --- 🦖 속도 증가 요소가 포함된 공룡 미니게임 & 랭킹 시스템 ---
-const canvas = document.getElementById('game-canvas');
+const canvas = document.getElementById('dinoCanvas');
 const ctx = canvas.getContext('2d');
-const startGameBtn = document.getElementById('start-game-btn');
-const currentScoreText = document.getElementById('current-score');
-const rankingList = document.getElementById('ranking-list');
+const dinoScoreDisplay = document.getElementById('dino-score');
+const gameActionBtn = document.getElementById('game-action-btn');
 
-const dinoImg = new Image();
-dinoImg.src = 'dino.png'; 
-
-const spikeImg = new Image();
-spikeImg.src = 'spike.png';
-
-let dino = { x: 30, y: 105, width: 30, height: 35, vy: 0, gravity: 0.6, jumpPower: -9, grounded: true };
+let gameRunning = false;
+let gameInitialized = false;
+let dino = { x: 30, y: 100, width: 20, height: 30, vy: 0, gravity: 0.6, jumpPower: -10, grounded: true };
 let obstacles = [];
 let score = 0;
-let gameSpeed = 4; // 기본 속도
-let gameInterval = null;
-let isGameRunning = false;
+let dinoGameInterval = null;
+let gameSpeed = 4;
 
-function jump() {
-    if (dino.grounded && isGameRunning) {
+function initDinoGame() {
+    gameInitialized = true;
+    drawStartScreen();
+}
+
+function drawStartScreen() {
+    ctx.fillStyle = '#f0f0f0';
+    ctx.fillRect(0, 0, canvas.width, canvas.height);
+    ctx.fillStyle = '#333';
+    ctx.font = '14px Malgun Gothic';
+    ctx.textAlign = 'center';
+    ctx.fillText('버튼을 누르거나 화면을 클릭해 시작하세요!', canvas.width / 2, canvas.height / 2);
+}
+
+function startDinoGame() {
+    if (gameRunning) return;
+    gameRunning = true;
+    score = 0;
+    obstacles = [];
+    gameSpeed = 4;
+    dino.y = 100;
+    dino.vy = 0;
+    dino.grounded = true;
+
+    if (dinoGameInterval) clearInterval(dinoGameInterval);
+
+    dinoGameInterval = setInterval(updateGame, 1000 / 60); // 60프레임
+}
+
+function jumpDino() {
+    if (!gameRunning) {
+        startDinoGame();
+        return;
+    }
+    if (dino.grounded) {
         dino.vy = dino.jumpPower;
         dino.grounded = false;
     }
 }
 
+gameActionBtn.addEventListener('click', jumpDino);
+canvas.addEventListener('click', jumpDino);
 window.addEventListener('keydown', (e) => {
-    if (e.code === 'Space' && !gameSection.classList.contains('hidden')) {
+    if (e.code === 'Space' && !document.getElementById('game-tab').classList.contains('hidden')) {
         e.preventDefault();
-        jump();
+        jumpDino();
     }
 });
 
-canvas.addEventListener('click', () => {
-    jump();
-});
+function updateGame() {
+    // 배경 지우기
+    ctx.fillStyle = '#f9f9f9';
+    ctx.fillRect(0, 0, canvas.width, canvas.height);
 
-startGameBtn.addEventListener('click', () => {
-    startGame();
-});
+    // 바닥 선 그리기
+    ctx.strokeStyle = '#555';
+    ctx.lineWidth = 2;
+    ctx.beginPath();
+    ctx.moveTo(0, 130);
+    ctx.lineTo(canvas.width, 130);
+    ctx.stroke();
 
-function startGame() {
-    if (isGameRunning) return;
-    
-    dino.y = 105;
-    dino.vy = 0;
-    dino.grounded = true;
-    obstacles = [];
-    score = 0;
-    gameSpeed = 4; // 초기 속도
-    isGameRunning = true;
-    currentScoreText.textContent = score;
+    // 공룡 물리 연산
+    dino.vy += dino.gravity;
+    dino.y += dino.vy;
 
-    let frameCount = 0;
+    if (dino.y > 100) {
+        dino.y = 100;
+        dino.vy = 0;
+        dino.grounded = true;
+    }
 
-    gameInterval = setInterval(() => {
-        ctx.clearRect(0, 0, canvas.width, canvas.height);
+    // 공룡 그리기 (네모난 공룡 모양)
+    ctx.fillStyle = '#4a90e2';
+    ctx.fillRect(dino.x, dino.y, dino.width, dino.height);
 
-        // 공룡 물리 연산
-        dino.vy += dino.gravity;
-        dino.y += dino.vy;
-        if (dino.y > 105) {
-            dino.y = 105;
-            dino.vy = 0;
-            dino.grounded = true;
+    // 장애물 생성 (랜덤 간격)
+    if (Math.random() < 0.02 && (obstacles.length === 0 || canvas.width - obstacles[obstacles.length - 1].x > 150)) {
+        obstacles.push({ x: canvas.width, y: 105, width: 15, height: 25 });
+    }
+
+    // 장애물 이동 및 충돌 체크
+    for (let i = obstacles.length - 1; i >= 0; i--) {
+        obstacles[i].x -= gameSpeed;
+        
+        // 장애물 그리기 (선인장)
+        ctx.fillStyle = '#e74c3c';
+        ctx.fillRect(obstacles[i].x, obstacles[i].y, obstacles[i].width, obstacles[i].height);
+
+        // 충돌 감지 (AABB 박스 충돌)
+        if (
+            dino.x < obstacles[i].x + obstacles[i].width &&
+            dino.x + dino.width > obstacles[i].x &&
+            dino.y < obstacles[i].y + obstacles[i].height &&
+            dino.y + dino.height > obstacles[i].y
+        ) {
+            // 게임 오버
+            clearInterval(dinoGameInterval);
+            gameRunning = false;
+            dinoScoreDisplay.textContent = `게임 오버! 최종 점수: ${score}`;
+            gameActionBtn.textContent = '다시 시작';
+            
+            // 서버에 점수 전송
+            saveRanking(currentUser, score);
+            return;
         }
 
-        if (dinoImg.complete && dinoImg.naturalWidth !== 0) {
-            ctx.drawImage(dinoImg, dino.x, dino.y, dino.width, dino.height);
-        } else {
-            ctx.fillStyle = "#333";
-            ctx.fillRect(dino.x, dino.y, dino.width, dino.height);
+        // 화면 밖으로 나간 장애물 제거
+        if (obstacles[i].x + obstacles[i].width < 0) {
+            obstacles.splice(i, 1);
+            score += 10; // 장애물 피할 때마다 점수 획득
         }
+    }
 
-        // 점수가 높아질수록 게임 속도 점진적 증가
-        gameSpeed = 4 + Math.floor(score / 50) * 0.5;
-
-        // 장애물 생성 및 이동
-        frameCount++;
-        if (frameCount % Math.max(40, 90 - Math.floor(score / 30) * 5) === 0) {
-            let obsWidth = 25;
-            let obsHeight = 30;
-            obstacles.push({ x: canvas.width, y: 140 - obsHeight, width: obsWidth, height: obsHeight });
-        }
-
-        for (let i = obstacles.length - 1; i >= 0; i--) {
-            let obs = obstacles[i];
-            obs.x -= gameSpeed;
-
-            if (spikeImg.complete && spikeImg.naturalWidth !== 0) {
-                ctx.drawImage(spikeImg, obs.x, obs.y, obs.width, obs.height);
-            } else {
-                ctx.fillStyle = "#e74c3c";
-                ctx.fillRect(obs.x, obs.y, obs.width, obs.height);
-            }
-
-            // 충돌 감지
-            if (
-                dino.x < obs.x + obs.width &&
-                dino.x + dino.width > obs.x &&
-                dino.y < obs.y + obs.height &&
-                dino.y + dino.height > obs.y
-            ) {
-                gameOver();
-            }
-
-            if (obs.x + obs.width < 0) {
-                obstacles.splice(i, 1);
-                score += 10;
-                currentScoreText.textContent = score;
-            }
-        }
-    }, 1000 / 60);
+    // 점수 증가 (시간에 따른 가점)
+    score += 1;
+    gameSpeed = 4 + Math.floor(score / 500); // 점수가 높을수록 빨라짐
+    dinoScoreDisplay.textContent = `점수: ${score}`;
 }
 
-function gameOver() {
-    isGameRunning = false;
-    clearInterval(gameInterval);
-    alert(`게임 종료! 최종 점수: ${score}점`);
+async function saveRanking(user, finalScore) {
+    if (!API_URL || API_URL.includes("YOUR_")) return;
 
-    saveRanking(currentUserId, score);
+    const payload = {
+        action: "saveRanking",
+        user: user,
+        score: finalScore
+    };
+
+    try {
+        await fetch(API_URL, {
+            method: 'POST',
+            body: JSON.stringify(payload)
+        });
+        await fetchData(); // 랭킹 갱신 반영
+    } catch (error) {
+        console.error("랭킹 저장 오류:", error);
+    }
 }
 
-// Firebase 랭킹 저장
-function saveRanking(userId, finalScore) {
-    if (finalScore === 0 || !userId) return;
+function renderRankings(list) {
+    const rankingList = document.getElementById('ranking-list');
+    rankingList.innerHTML = '';
+    if (list.length === 0) {
+        rankingList.innerHTML = '<p style="font-size:12px; color:#888;">등록된 랭킹이 없습니다.</p>';
+        return;
+    }
 
-    const rankRef = db.collection("rankings").doc(userId);
-    rankRef.get().then((doc) => {
-        if (!doc.exists || finalScore > doc.data().score) {
-            rankRef.set({
-                id: userId,
-                score: finalScore
-            });
-        }
+    list.sort((a, b) => b.score - a.score);
+    list.slice(0, 5).forEach((item, index) => {
+        const div = document.createElement('div');
+        div.className = 'item-card';
+        div.style.borderLeftColor = index === 0 ? '#f1c40f' : '#4a90e2';
+        div.innerHTML = `<strong>${index + 1위}</strong> 학번: ${item.user} — <strong>${item.score}점</strong>`;
+        rankingList.appendChild(div);
     });
 }
