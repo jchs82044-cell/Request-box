@@ -1,5 +1,5 @@
 // --- [중요] 구글 Apps Script 웹 앱 배포 후 발급받은 URL을 여기에 넣으세요 ---
-const API_URL = "https://script.google.com/macros/s/AKfycbzXPdVpJGWwuggNJVbIonuE_lTLmdX238sm_URRpMqanz0zfXr81vQ_vUL6xkVijmRmnw/exec";
+const API_URL = "https://script.google.com/macros/s/AKfycbwpQxigLhAXa4Sw08ZW_B99RKl22CRTVI0Rc3uspCKhU8C3GToS7j40-lCOmQ6Va4_N_Q/exec";
 
 let currentUser = null;
 const adminUsers = ["20702", "20703", "20708"]; // 관리자 학번 지정
@@ -13,8 +13,8 @@ const loginMsg = document.getElementById('login-msg');
 const welcomeTitle = document.getElementById('welcome-title');
 const logoutBtn = document.getElementById('logout-btn');
 
-// --- [1] 로그인 기능 ---
-loginBtn.addEventListener('click', function() {
+// --- [1] 로그인 및 비밀번호 변경 기능 ---
+loginBtn.addEventListener('click', async function() {
     const id = studentIdInput.value.trim();
     const pw = studentPwInput.value.trim();
 
@@ -24,8 +24,10 @@ loginBtn.addEventListener('click', function() {
         return;
     }
 
-    if (pw !== '1111') {
-        loginMsg.textContent = "비밀번호가 틀렸습니다. (기본: 1111)";
+    // 서버(구글 시트)에서 저장된 비밀번호 확인 검증 수행
+    const isValid = await verifyPassword(id, pw);
+    if (!isValid) {
+        loginMsg.textContent = "비밀번호가 틀렸습니다. (최초 기본값: 1111)";
         return;
     }
 
@@ -43,6 +45,21 @@ loginBtn.addEventListener('click', function() {
     fetchData();
 });
 
+// 비밀번호 검증 함수 (서버 연동)
+async function verifyPassword(userId, password) {
+    if (!API_URL || API_URL.includes("YOUR_")) {
+        return password === '1111'; // URL 미설정 시 기본값 허용
+    }
+    try {
+        const response = await fetch(API_URL + "?action=verifyPassword&user=" + userId + "&pw=" + password);
+        const result = await response.json();
+        return result.valid;
+    } catch (e) {
+        console.error("비밀번호 확인 오류:", e);
+        return password === '1111'; // 통신 실패 시 기본값 fallback
+    }
+}
+
 logoutBtn.addEventListener('click', function() {
     currentUser = null;
     studentIdInput.value = '';
@@ -51,6 +68,49 @@ logoutBtn.addEventListener('click', function() {
     loginSection.classList.remove('hidden');
     if (dinoGameInterval) clearInterval(dinoGameInterval);
 });
+
+// 비밀번호 변경 UI 이벤트 (마이페이지 등에 관련 입력 필드가 있다고 가정)
+const changePwBtn = document.getElementById('change-pw-btn');
+if (changePwBtn) {
+    changePwBtn.addEventListener('click', async function() {
+        const currentPw = document.getElementById('current-pw').value.trim();
+        const newPw = document.getElementById('new-pw').value.trim();
+        const pwMsg = document.getElementById('pw-msg');
+
+        if (!currentPw || !newPw) {
+            pwMsg.textContent = "기존 비밀번호와 새 비밀번호를 모두 입력해주세요.";
+            pwMsg.style.color = "red";
+            return;
+        }
+
+        const payload = {
+            action: "changePassword",
+            user: currentUser,
+            currentPw: currentPw,
+            newPw: newPw
+        };
+
+        try {
+            const res = await fetch(API_URL, {
+                method: 'POST',
+                body: JSON.stringify(payload)
+            });
+            const result = await res.json();
+            if (result.status === "success") {
+                pwMsg.textContent = "비밀번호가 성공적으로 변경되었습니다.";
+                pwMsg.style.color = "green";
+                document.getElementById('current-pw').value = '';
+                document.getElementById('new-pw').value = '';
+            } else {
+                pwMsg.textContent = result.message || "비밀번호 변경에 실패했습니다.";
+                pwMsg.style.color = "red";
+            }
+        } catch (e) {
+            pwMsg.textContent = "서버 통신 오류가 발생했습니다.";
+            pwMsg.style.color = "red";
+        }
+    });
+}
 
 // --- [2] 탭 전환 기능 ---
 const tabBtns = document.querySelectorAll('.tab-btn');
@@ -78,7 +138,7 @@ async function fetchData() {
     }
 
     try {
-        const response = await fetch(API_URL);
+        const response = await fetch(API_URL + "?action=getData");
         const data = await response.json();
         renderSuggestions(data.suggestions || []);
         renderRankings(data.rankings || []);
@@ -120,7 +180,7 @@ submitSuggestionBtn.addEventListener('click', async function() {
     }
 });
 
-// 건의함 렌더링
+// 건의함 렌더링 (작성자 규칙 반영)
 function renderSuggestions(list) {
     const suggestionList = document.getElementById('suggestion-list');
     suggestionList.innerHTML = '';
@@ -136,21 +196,12 @@ function renderSuggestions(list) {
         div.className = 'item-card';
         
         let displayName = "";
-
         if (isAdmin) {
-            if (adminUsers.includes(item.author)) {
-                displayName = "관리자 (" + item.author + ")";
-            } else {
-                displayName = item.author;
-            }
+            displayName = adminUsers.includes(item.author) ? "관리자 (" + item.author + ")" : item.author;
         } else {
-            if (item.author === currentUser) {
-                displayName = item.author;
-            } else if (adminUsers.includes(item.author)) {
-                displayName = "관리자";
-            } else {
-                displayName = "익명";
-            }
+            if (item.author === currentUser) displayName = item.author;
+            else if (adminUsers.includes(item.author)) displayName = "관리자";
+            else displayName = "익명";
         }
 
         let html = '<strong>작성자: ' + displayName + '</strong> (' + item.date + ')<p>' + item.content + '</p>';
@@ -195,7 +246,6 @@ const ctx = canvas.getContext('2d');
 const dinoScoreDisplay = document.getElementById('dino-score');
 const gameActionBtn = document.getElementById('game-action-btn');
 
-// 이미지 객체 생성 및 파일 연결
 const dinoImg = new Image();
 dinoImg.src = 'dino.png';
 
@@ -262,7 +312,6 @@ function updateGame() {
     ctx.fillStyle = '#f9f9f9';
     ctx.fillRect(0, 0, canvas.width, canvas.height);
 
-    // 바닥 선
     ctx.strokeStyle = '#555';
     ctx.lineWidth = 2;
     ctx.beginPath();
@@ -270,7 +319,6 @@ function updateGame() {
     ctx.lineTo(canvas.width, 130);
     ctx.stroke();
 
-    // 공룡 물리 연산
     dino.vy += dino.gravity;
     dino.y += dino.vy;
 
@@ -280,7 +328,6 @@ function updateGame() {
         dino.grounded = true;
     }
 
-    // 공룡 이미지 그리기 (이미지 로드 실패 시 대체 사각형 처리)
     if (dinoImg.complete && dinoImg.naturalWidth !== 0) {
         ctx.drawImage(dinoImg, dino.x, dino.y, dino.width, dino.height);
     } else {
@@ -288,16 +335,13 @@ function updateGame() {
         ctx.fillRect(dino.x, dino.y, dino.width, dino.height);
     }
 
-    // 장애물 생성
     if (Math.random() < 0.02 && (obstacles.length === 0 || canvas.width - obstacles[obstacles.length - 1].x > 150)) {
         obstacles.push({ x: canvas.width, y: 100, width: 25, height: 30 });
     }
 
-    // 장애물 이동 및 충돌 체크
     for (let i = obstacles.length - 1; i >= 0; i--) {
         obstacles[i].x -= gameSpeed;
         
-        // 가시(스파이크) 이미지 그리기 (이미지 로드 실패 시 대체 사각형)
         if (spikeImg.complete && spikeImg.naturalWidth !== 0) {
             ctx.drawImage(spikeImg, obstacles[i].x, obstacles[i].y, obstacles[i].width, obstacles[i].height);
         } else {
@@ -305,7 +349,6 @@ function updateGame() {
             ctx.fillRect(obstacles[i].x, obstacles[i].y, obstacles[i].width, obstacles[i].height);
         }
 
-        // 충돌 감지
         if (
             dino.x < obstacles[i].x + obstacles[i].width &&
             dino.x + dino.width > obstacles[i].x &&
