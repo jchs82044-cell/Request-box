@@ -1,5 +1,5 @@
 // --- [중요] 구글 Apps Script 웹 앱 배포 후 발급받은 URL을 여기에 넣으세요 ---
-const API_URL = "https://script.google.com/macros/s/AKfycbwpQxigLhAXa4Sw08ZW_B99RKl22CRTVI0Rc3uspCKhU8C3GToS7j40-lCOmQ6Va4_N_Q/exec";
+const API_URL = "https://script.google.com/macros/s/AKfycbz2deAyCILZ1kDm5b5_3ng-z9x11S9_Hdn6QDdVwB-DrqvY8oweS_n-AEUsEBxEh9dvlQ/exec";
 
 let currentUser = null;
 const adminUsers = ["20702", "20703", "20708"]; // 관리자 학번 지정
@@ -157,7 +157,7 @@ submitSuggestionBtn.addEventListener('click', async function() {
 
     const payload = {
         action: "addSuggestion",
-        author: currentUser,
+        author: String(currentUser), // 현재 로그인된 사용자 학번 전송
         content: text,
         date: new Date().toLocaleDateString()
     };
@@ -177,7 +177,7 @@ submitSuggestionBtn.addEventListener('click', async function() {
     }
 });
 
-// 건의함 렌더링 (관리자 작성글은 누구나 '관리자'로 표시되도록 수정)
+// 건의함 렌더링 (작성자 표시 규칙 완벽 적용)
 function renderSuggestions(list) {
     const suggestionList = document.getElementById('suggestion-list');
     suggestionList.innerHTML = '';
@@ -193,28 +193,31 @@ function renderSuggestions(list) {
         div.className = 'item-card';
         
         let displayName = "";
-        
-        // 작성자가 관리자(adminUsers에 포함)인 경우, 누구에게나 항상 "관리자"로 표시
-        if (adminUsers.includes(item.author)) {
+        const authorStr = String(item.author).trim();
+
+        // 1. 작성자가 관리자인 경우 -> 누구나 "관리자"로 표시
+        if (adminUsers.includes(authorStr)) {
             displayName = "관리자";
-        } else {
-            // 일반 학생이 작성한 글인 경우
+        } 
+        else {
+            // 2. 관리자 계정으로 로그인한 경우 -> 모든 학생의 실제 학번을 보여줌
             if (isAdmin) {
-                // 관리자 로그인 시: 일반 학생은 학번 그대로 표시
-                displayName = item.author;
-            } else {
-                // 일반 학생 로그인 시: 본인 글이면 학번, 남의 글이면 익명
-                if (item.author === currentUser) {
-                    displayName = item.author;
+                displayName = authorStr;
+            } 
+            // 3. 일반 학생 계정으로 로그인한 경우
+            else {
+                if (authorStr === String(currentUser)) {
+                    displayName = authorStr; // 내 글이면 내 학번
                 } else {
-                    displayName = "익명";
+                    displayName = "익명";     // 남의 글이면 익명
                 }
             }
         }
 
         let html = '<strong>작성자: ' + displayName + '</strong> (' + item.date + ')<p>' + item.content + '</p>';
         
-        if (isAdmin || item.author === currentUser) {
+        // 삭제 권한: 관리자이거나 본인이 작성한 글인 경우에만 삭제 버튼 노출
+        if (isAdmin || authorStr === String(currentUser)) {
             html += '<button class="delete-btn" data-index="' + (list.length - 1 - index) + '" style="margin-top:5px; padding:4px 8px; font-size:11px; background:#e74c3c; width:auto;">삭제</button>';
         }
 
