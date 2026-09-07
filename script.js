@@ -24,7 +24,6 @@ loginBtn.addEventListener('click', async function() {
         return;
     }
 
-    // 서버(구글 시트)에서 저장된 비밀번호 확인 검증 수행
     const isValid = await verifyPassword(id, pw);
     if (!isValid) {
         loginMsg.textContent = "비밀번호가 틀렸습니다. (최초 기본값: 1111)";
@@ -45,10 +44,9 @@ loginBtn.addEventListener('click', async function() {
     fetchData();
 });
 
-// 비밀번호 검증 함수 (서버 연동)
 async function verifyPassword(userId, password) {
     if (!API_URL || API_URL.includes("YOUR_")) {
-        return password === '1111'; // URL 미설정 시 기본값 허용
+        return password === '1111';
     }
     try {
         const response = await fetch(API_URL + "?action=verifyPassword&user=" + userId + "&pw=" + password);
@@ -56,7 +54,7 @@ async function verifyPassword(userId, password) {
         return result.valid;
     } catch (e) {
         console.error("비밀번호 확인 오류:", e);
-        return password === '1111'; // 통신 실패 시 기본값 fallback
+        return password === '1111';
     }
 }
 
@@ -69,7 +67,6 @@ logoutBtn.addEventListener('click', function() {
     if (dinoGameInterval) clearInterval(dinoGameInterval);
 });
 
-// 비밀번호 변경 UI 이벤트 (마이페이지 등에 관련 입력 필드가 있다고 가정)
 const changePwBtn = document.getElementById('change-pw-btn');
 if (changePwBtn) {
     changePwBtn.addEventListener('click', async function() {
@@ -180,7 +177,7 @@ submitSuggestionBtn.addEventListener('click', async function() {
     }
 });
 
-// 건의함 렌더링 (작성자 규칙 반영)
+// 건의함 렌더링 (관리자 작성글은 누구나 '관리자'로 표시되도록 수정)
 function renderSuggestions(list) {
     const suggestionList = document.getElementById('suggestion-list');
     suggestionList.innerHTML = '';
@@ -196,12 +193,23 @@ function renderSuggestions(list) {
         div.className = 'item-card';
         
         let displayName = "";
-        if (isAdmin) {
-            displayName = adminUsers.includes(item.author) ? "관리자 (" + item.author + ")" : item.author;
+        
+        // 작성자가 관리자(adminUsers에 포함)인 경우, 누구에게나 항상 "관리자"로 표시
+        if (adminUsers.includes(item.author)) {
+            displayName = "관리자";
         } else {
-            if (item.author === currentUser) displayName = item.author;
-            else if (adminUsers.includes(item.author)) displayName = "관리자";
-            else displayName = "익명";
+            // 일반 학생이 작성한 글인 경우
+            if (isAdmin) {
+                // 관리자 로그인 시: 일반 학생은 학번 그대로 표시
+                displayName = item.author;
+            } else {
+                // 일반 학생 로그인 시: 본인 글이면 학번, 남의 글이면 익명
+                if (item.author === currentUser) {
+                    displayName = item.author;
+                } else {
+                    displayName = "익명";
+                }
+            }
         }
 
         let html = '<strong>작성자: ' + displayName + '</strong> (' + item.date + ')<p>' + item.content + '</p>';
