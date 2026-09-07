@@ -1,14 +1,15 @@
-// --- [중요] 본인의 Firebase 설정 정보 입력 필요 ---
+// 본인의 파이어베이스 설정 정보가 이미 적용된 완성된 코드입니다.
 const firebaseConfig = {
-    apiKey: "YOUR_API_KEY",
-    authDomain: "YOUR_AUTH_DOMAIN",
-    projectId: "YOUR_PROJECT_ID",
-    storageBucket: "YOUR_STORAGE_BUCKET",
-    messagingSenderId: "YOUR_MESSAGING_SENDER_ID",
-    appId: "YOUR_APP_ID"
+    apiKey: "AIzaSyDQTEOv0w5BGpdc6sfAKQA29lSmIqoSUCI",
+    authDomain: "request-box-bd52a.firebaseapp.com",
+    projectId: "request-box-bd52a",
+    storageBucket: "request-box-bd52a.appspot.com",
+    messagingSenderId: "346195233198",
+    appId: "1:346195233198:web:3e9b24d04600d7cbc4e03f",
+    measurementId: "G-6NC206K04Q"
 };
 
-// Firebase 초기화
+// Firebase 초기화 (compat 버전)
 firebase.initializeApp(firebaseConfig);
 const db = firebase.firestore();
 
